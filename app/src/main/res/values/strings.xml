@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">F-Chat-Mobile</string>
+    <string name="chat">Chat</string>
+    <string name="contacts">Contacts</string>
+</resources>
