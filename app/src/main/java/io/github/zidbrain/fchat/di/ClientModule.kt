@@ -1,6 +1,8 @@
 package io.github.zidbrain.fchat.di
 
+import android.util.Log
 import io.github.zidbrain.fchat.android.BuildConfig
+import io.github.zidbrain.fchat.common.UnauthorizedException
 import io.github.zidbrain.fchat.common.login.repository.LoginRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
@@ -11,10 +13,11 @@ import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.plugins.logging.ANDROID
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.observer.ResponseObserver
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLBuilder
 import io.ktor.http.encodedPath
 import io.ktor.http.takeFrom
@@ -29,12 +32,20 @@ private fun createClient(setup: HttpClientConfig<CIOEngineConfig>.() -> Unit = {
         }
         Logging {
             level = LogLevel.INFO
-            logger = Logger.ANDROID
+            logger = object : Logger {
+                override fun log(message: String) {
+                    Log.i("HttpClient", message)
+                }
+            }
         }
         defaultRequest {
             url.takeFrom(URLBuilder().takeFrom(BuildConfig.SERVER_URL).apply {
                 encodedPath += url.encodedPath
             })
+        }
+        ResponseObserver {
+            if (it.status == HttpStatusCode.Unauthorized)
+                throw UnauthorizedException("${it.call.request.method} ${it.call.request.url} returned 401 unauthorized")
         }
         setup()
     }

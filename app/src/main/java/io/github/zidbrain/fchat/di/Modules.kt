@@ -8,7 +8,6 @@ import io.github.zidbrain.fchat.common.account.storage.AndroidEncryptedStorage
 import io.github.zidbrain.fchat.common.account.storage.EncryptedStorage
 import io.github.zidbrain.fchat.common.account.storage.SsoStorage
 import io.github.zidbrain.fchat.common.contacts.api.ContactsApi
-import io.github.zidbrain.fchat.common.contacts.viewmodel.AddContactViewModel
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsViewModel
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.host.viewmodel.HostViewModel
@@ -46,7 +45,6 @@ val mainModule = module {
 val contactsModule = module {
     single { ContactsApi(get(qualifier(ClientType.Authorized))) }
     viewModelOf(::ContactsViewModel)
-    viewModelOf(::AddContactViewModel)
 }
 
 val allModules =

@@ -14,15 +14,10 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun HostScreen(viewModel: HostViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    AnimatedContent(targetState = state, label = "Host Screen", contentKey = {
-        when (it) {
-            HostState.Loading, HostState.LogIn -> Unit
-            else -> it::class
-        }
-    }) {
+    AnimatedContent(targetState = state, label = "Host Screen", contentKey = { it::class }) {
         when (it) {
             is HostState.Error -> ErrorHandler(cause = it.error)
-            HostState.Loading, HostState.LogIn -> LoginScreen(sigInInButtonVisible = it is HostState.LogIn)
+            HostState.LogIn -> LoginScreen()
             HostState.Main -> MainScreen()
         }
     }

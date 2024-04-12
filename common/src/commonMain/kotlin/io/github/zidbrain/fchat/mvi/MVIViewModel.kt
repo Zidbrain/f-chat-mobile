@@ -1,56 +1,60 @@
 package io.github.zidbrain.fchat.mvi
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 
-abstract class MVIViewModel<in Action : Any, out State : Any, Event>(initialState: State) : ViewModel() {
+abstract class MVIViewModel<in Action : Any, State : Any, Event>(initialState: State) :
+    ViewModel() {
 
     private var init = false
 
-    private val _state = MutableStateFlow(initialState)
+    internal val mState = MutableStateFlow(initialState)
     val state by lazy {
-        getStateUpdateJob(onInit())
-        _state.asStateFlow()
+        initAction?.let { getStateUpdateJob(it) }
+        mState.asStateFlow()
     }
 
-    private val _events = MutableSharedFlow<Event>(
+    internal val mEvents = MutableSharedFlow<Event>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
-    val events = _events.asSharedFlow()
+    val events = mEvents.asSharedFlow()
 
-    private val flowHolders = mutableMapOf<KClass<out Action>, Job>()
+    private val flowHolders = mutableMapOf<KClass<out Action>, MutableJobHolder>()
 
-    private fun getStateUpdateJob(updateWith: Flow<State>) =
-        viewModelScope.launch {
-            _state.emitAll(updateWith)
+    private fun getStateUpdateJob(action: MVIActionBuilder<State, Event>): Job {
+        val handler = MVIActionHandler(this)
+        return viewModelScope.launch {
+            action.block(handler)
         }
+    }
 
     fun sendAction(action: Action) {
-        flowHolders[action::class]?.cancel()
-        flowHolders[action::class] = getStateUpdateJob(handleAction(action))
+        val builder = handleAction(action)
+        val holder = flowHolders.getOrPut(action::class) { MutableJobHolder() }
+        if (builder.cancelable)
+            holder.cancel()
+        holder += getStateUpdateJob(handleAction(action))
     }
 
-    protected fun sendEvent(event: Event) = viewModelScope.launch {
-        _events.emit(event)
+    fun cancelAction(action: KClass<out Action>) {
+        flowHolders[action]?.cancel()
     }
 
-    protected abstract fun handleAction(action: Action): Flow<State>
-    protected open fun onInit(): Flow<State> = emptyFlow()
+    protected fun buildAction(block: suspend MVIActionHandler<State, Event>.() -> Unit = {}): MVIActionBuilder<State, Event> =
+        MVIActionBuilder(this, block)
 
-    protected inline fun Flow<@UnsafeVariance State>.errorState(crossinline getErrorState: (Throwable) -> @UnsafeVariance State) = catch {
-        if (it !is CancellationException) emit(getErrorState(it))
-    }
-    protected inline fun Flow<@UnsafeVariance State>.errorEvent(crossinline getErrorEvent: (Throwable) -> Event) = catch {
-        if (it !is CancellationException) sendEvent(getErrorEvent(it))
-    }
+    protected abstract fun handleAction(action: Action): MVIActionBuilder<State, Event>
+    protected open val initAction: MVIActionBuilder<State, Event>? = null
 
-    open class Actionless<out State : Any>(initialState: State) :
+    open class Actionless<State : Any>(initialState: State) :
         MVIViewModel<Nothing, State, Nothing>(initialState) {
-        override fun handleAction(action: Nothing) = emptyFlow<State>()
+        override fun handleAction(action: Nothing) = buildAction()
     }
 }
