@@ -1,0 +1,25 @@
+CREATE TABLE contactEntity (
+    id TEXT PRIMARY KEY NOT NULL,
+    publicKey TEXT UNIQUE NOT NULL,
+    email TEXT NOT NULL,
+    displayName TEXT NOT NULL
+);
+
+CREATE INDEX contact_public_key ON contactEntity(publicKey);
+
+selectAll:
+SELECT * FROM contactEntity WHERE publicKey = ?;
+
+clear:
+DELETE FROM contactEntity;
+
+insert:
+INSERT INTO contactEntity(id, publicKey, email, displayName)
+VALUES ?;
+
+searchContacts:
+SELECT * FROM contactEntity
+WHERE displayName LIKE ('%' || :query)
+OR displayName LIKE (:query || '%')
+OR email LIKE ('%' || :query)
+OR email LIKE (:query || '%');

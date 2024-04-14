@@ -1,6 +1,7 @@
 package io.github.zidbrain.fchat.di
 
 import androidx.credentials.CredentialManager
+import io.github.zidbrain.Database
 import io.github.zidbrain.fchat.android.account.storage.AndroidSsoStorage
 import io.github.zidbrain.fchat.common.account.encryption.AndroidEncryptionService
 import io.github.zidbrain.fchat.common.account.encryption.EncryptionService
@@ -8,7 +9,10 @@ import io.github.zidbrain.fchat.common.account.storage.AndroidEncryptedStorage
 import io.github.zidbrain.fchat.common.account.storage.EncryptedStorage
 import io.github.zidbrain.fchat.common.account.storage.SsoStorage
 import io.github.zidbrain.fchat.common.contacts.api.ContactsApi
+import io.github.zidbrain.fchat.common.contacts.local.ContactsDao
+import io.github.zidbrain.fchat.common.contacts.repository.ContactsRepository
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsViewModel
+import io.github.zidbrain.fchat.common.database.DriverFactory
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.host.viewmodel.HostViewModel
 import io.github.zidbrain.fchat.common.login.api.LoginApi
@@ -44,8 +48,17 @@ val mainModule = module {
 
 val contactsModule = module {
     single { ContactsApi(get(qualifier(ClientType.Authorized))) }
+    singleOf(::ContactsDao)
+    singleOf(::ContactsRepository)
     viewModelOf(::ContactsViewModel)
 }
 
+val databaseModule = module {
+    single(createdAtStart = true) {
+        val driver = DriverFactory(get()).createDriver()
+        Database(driver)
+    }
+}
+
 val allModules =
-    clientModule + accountModule + hostModule + loginModule + mainModule + contactsModule
+    clientModule + accountModule + hostModule + loginModule + mainModule + contactsModule + databaseModule

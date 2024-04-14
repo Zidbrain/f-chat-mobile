@@ -51,8 +51,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.zidbrain.fchat.android.R
 import io.github.zidbrain.fchat.android.ui.common.ErrorHandler
-import io.github.zidbrain.fchat.common.contacts.model.User
+import io.github.zidbrain.fchat.android.ui.main.LocalSnackbarHostState
+import io.github.zidbrain.fchat.common.contacts.model.Contact
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsAction
+import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsEvent
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.Content
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.Error
@@ -60,6 +62,7 @@ import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.Loading
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.SearchState
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.TopBarState
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsViewModel
+import io.github.zidbrain.fchat.util.CollectorEffect
 import io.github.zidbrain.fchat.util.rememberCallbackState
 import org.koin.androidx.compose.koinViewModel
 
@@ -87,6 +90,14 @@ fun ContactsPage(
         },
         refresh = { viewModel.sendAction(ContactsAction.Refresh) }
     )
+
+    val snackbarHost = LocalSnackbarHostState.current
+    CollectorEffect(flow = viewModel.events) {
+        when (it) {
+            is ContactsEvent.ContactAdded ->
+                snackbarHost.showSnackbar("${it.displayName} has been added to contacts")
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -222,7 +233,7 @@ private fun ContactsTopAppBar(
 }
 
 @Composable
-private fun Contact(modifier: Modifier = Modifier, user: User) =
+private fun Contact(modifier: Modifier = Modifier, contact: Contact) =
     Row(modifier = modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
@@ -235,13 +246,13 @@ private fun Contact(modifier: Modifier = Modifier, user: User) =
         ) {
             Text(
                 modifier = Modifier.padding(start = 10.dp),
-                text = user.displayName,
+                text = contact.displayName,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 modifier = Modifier.padding(start = 10.dp, bottom = 4.dp),
-                text = user.email,
+                text = contact.email,
                 style = MaterialTheme.typography.bodyLarge
             )
         }
@@ -278,7 +289,7 @@ private fun ContactsList(
                 itemsIndexed(
                     items = content.contacts,
                     key = { _, it -> it.id },
-                    contentType = { _, _ -> User::class }
+                    contentType = { _, _ -> Contact::class }
                 ) { i, it ->
                     Column(
                         modifier = Modifier
@@ -291,7 +302,7 @@ private fun ContactsList(
                                         addContact(it.id, it.displayName)
                                 }
                                 .padding(bottom = 10.dp),
-                            user = it
+                            contact = it
                         )
                         if (i != content.contacts.lastIndex)
                             HorizontalDivider(
@@ -324,7 +335,7 @@ private fun ContactsPreview() {
     ContactsContent(
         state = Content(
             contacts = List(size = 10) {
-                User("$it", "user$it@gmail.com", "User $it")
+                Contact("$it", "user$it@gmail.com", "User $it")
             },
             topBarState = TopBarState.enabled(),
             isRefreshing = false

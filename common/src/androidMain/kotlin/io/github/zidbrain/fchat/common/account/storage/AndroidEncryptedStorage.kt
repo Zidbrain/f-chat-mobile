@@ -24,8 +24,17 @@ class AndroidEncryptedStorage(context: Context) : EncryptedStorage {
                 .commit()
         }
 
+    override var email: String?
+        get() = prefs.getString(EMAIL, null)
+        set(value) {
+            editor
+                .putString(EMAIL, value)
+                .commit()
+        }
+
     private companion object {
         const val FILE_NAME = "prefs_encrypted"
         const val REFRESH_TOKEN = "refreshToken"
+        const val EMAIL = "email"
     }
 }

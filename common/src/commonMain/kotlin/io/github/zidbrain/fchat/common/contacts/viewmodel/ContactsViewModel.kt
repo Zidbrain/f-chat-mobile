@@ -1,24 +1,32 @@
 package io.github.zidbrain.fchat.common.contacts.viewmodel
 
-import io.github.zidbrain.fchat.common.contacts.api.ContactsApi
-import io.github.zidbrain.fchat.common.contacts.model.User
-import io.github.zidbrain.fchat.common.contacts.model.toModel
+import io.github.zidbrain.fchat.common.contacts.model.Contact
+import io.github.zidbrain.fchat.common.contacts.repository.ContactsRepository
 import io.github.zidbrain.fchat.mvi.MVIViewModel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
-class ContactsViewModel(private val contactsApi: ContactsApi) :
-    MVIViewModel<ContactsAction, ContactsState, ContactsEvent>(ContactsState.Loading) {
-    private lateinit var allContacts: List<User>
+class ContactsViewModel(private val repository: ContactsRepository) :
+    MVIViewModel<ContactsAction, ContactsState, ContactsEvent>(getInitState(repository)) {
 
-    override val initAction = buildAction {
-        val response = contactsApi.getContacts()
-        allContacts = response.users.map { it.toModel() }
-        setState(
+    companion object {
+        private fun getInitState(repository: ContactsRepository): ContactsState {
+            val localContacts = repository.getLocalContacts()
+            return if (localContacts.isEmpty()) ContactsState.Loading
+            else localContacts.toState()
+        }
+
+        private fun List<Contact>.toState() =
             ContactsState.Content(
-                contacts = allContacts,
-                topBarState = ContactsState.TopBarState.enabled(allContacts.isNotEmpty()),
+                contacts = this,
+                topBarState = ContactsState.TopBarState.enabled(isNotEmpty()),
                 isRefreshing = false
             )
-        )
+    }
+
+
+    override val initAction = buildAction {
+        setStateBy(repository.contacts.map { it.toState() })
     }.onErrorSet(ContactsState::Error)
 
     override fun handleAction(action: ContactsAction) = buildAction {
@@ -27,43 +35,30 @@ class ContactsViewModel(private val contactsApi: ContactsApi) :
         when (action) {
             ContactsAction.Refresh -> requireState<ContactsState.Content> {
                 setState { copy(isRefreshing = true) }
-                val response = contactsApi.getContacts()
-                allContacts = response.users.map { it.toModel() }
-                setState { copy(contacts = allContacts, isRefreshing = false) }
+                repository.fetchContacts()
+                setState { copy(isRefreshing = false) }
             }
 
             ContactsAction.DiscoverContacts -> {
                 setState(
                     ContactsState.Content(
-                        contacts = emptyList(),
-                        topBarState = ContactsState.TopBarState.search(
-                            query = "",
-                            local = false,
-                            loading = false
-                        ),
-                        isRefreshing = false
+                        contacts = emptyList(), topBarState = ContactsState.TopBarState.search(
+                            query = "", local = false, loading = false
+                        ), isRefreshing = false
                     )
                 )
             }
 
             ContactsAction.ClickCancelSearch -> {
-                setState(
-                    ContactsState.Content(
-                        contacts = allContacts,
-                        topBarState = ContactsState.TopBarState.enabled(allContacts.isNotEmpty()),
-                        isRefreshing = false
-                    )
-                )
+                setState(repository.contacts.first().toState())
             }
 
             ContactsAction.ClickSearch -> {
                 setState(
                     ContactsState.Content(
-                        contacts = allContacts,
+                        contacts = repository.contacts.first(),
                         topBarState = ContactsState.TopBarState.search(
-                            query = "",
-                            local = true,
-                            loading = false
+                            query = "", local = true, loading = false
                         ),
                         isRefreshing = false
                     )
@@ -76,39 +71,23 @@ class ContactsViewModel(private val contactsApi: ContactsApi) :
                 setState {
                     copy(
                         topBarState = ContactsState.TopBarState.search(
-                            query = action.query,
-                            local = searchState.local,
-                            loading = true
+                            query = action.query, local = searchState.local, loading = true
                         )
                     )
                 }
-                val filtered = if (searchState.local) allContacts.filter {
-                    it.email.contains(action.query) || it.displayName.contains(action.query)
-                } else {
-                    if (action.query.isBlank())
-                        emptyList()
-                    else {
-                        val response = contactsApi.searchUsers(action.query)
-                        response.users.map { it.toModel() }
-                    }
-                }
+                val filtered = repository.searchContacts(searchState.local, action.query)
                 setState(
                     ContactsState.Content(
-                        contacts = filtered,
-                        topBarState = ContactsState.TopBarState.search(
-                            action.query,
-                            searchState.local,
-                            false
-                        ),
-                        isRefreshing = false
+                        contacts = filtered, topBarState = ContactsState.TopBarState.search(
+                            action.query, searchState.local, false
+                        ), isRefreshing = false
                     )
                 )
             }
 
             is ContactsAction.AddContact -> {
                 setState(ContactsState.Loading)
-                contactsApi.addContact(action.id)
-                setStateBy(initAction)
+                repository.addContact(action.id)
                 raiseEvent(ContactsEvent.ContactAdded(action.displayName))
             }
         }
@@ -152,11 +131,10 @@ sealed class ContactsState(open val topBarState: TopBarState) {
     data object Loading : ContactsState(TopBarState.Disabled)
     data class Error(val error: Throwable) : ContactsState(TopBarState.Disabled)
     data class Content(
-        val contacts: List<User>,
+        val contacts: List<Contact>,
         override val topBarState: TopBarState,
         val isRefreshing: Boolean
-    ) :
-        ContactsState(topBarState)
+    ) : ContactsState(topBarState)
 }
 
 sealed class ContactsAction {

@@ -84,6 +84,10 @@ dependencies {
     // koin
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android.compose)
+    testImplementation(libs.koin.test)
+
+    // mockito
+    testImplementation(libs.mockito.core)
 
     // ktor
     implementation(libs.ktor.client.core)

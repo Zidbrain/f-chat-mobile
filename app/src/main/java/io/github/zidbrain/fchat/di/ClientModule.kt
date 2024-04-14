@@ -62,13 +62,13 @@ val clientModule = module {
                     val loginRepository = get<LoginRepository>()
                     loadTokens {
                         val state = loginRepository.authorizedSession
-                        BearerTokens(state.accessToken, state.refreshToken)
+                        BearerTokens(state.accessToken, state.userSessionInfo.refreshToken)
                     }
                     refreshTokens {
                         try {
                             loginRepository.requestAccessToken()
                             val state = loginRepository.authorizedSession
-                            BearerTokens(state.accessToken, state.refreshToken)
+                            BearerTokens(state.accessToken, state.userSessionInfo.refreshToken)
                         }
                         catch (ex: Exception) {
                             logger.warn("Error getting access token.\n${ex.stackTraceToString()}")

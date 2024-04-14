@@ -14,10 +14,12 @@ activityCompose = "1.8.2"
 composeBom = "2024.04.00"
 googleServices = "4.4.1"
 koin-bom = "3.5.3"
+mockito = "5.11.0"
 securityCrypto = "1.0.0"
 serialization = "1.6.3"
 coroutines = "1.8.0"
 navigation = "2.7.7"
+sqldelight = "2.0.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,6 +46,7 @@ androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin-bom" }
 koin-android-compose = { module = "io.insert-koin:koin-androidx-compose" }
+koin-test = { module = "io.insert-koin:koin-test-junit4" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref ="ktor" }
@@ -52,6 +55,9 @@ ktor-content-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx
 ktor-logger = { module = "io.ktor:ktor-client-logging-jvm", version.ref = "ktor" }
 kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+app-cash-sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
+app-cash-sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
@@ -59,3 +65,4 @@ googleServices = { id = "com.google.gms.google-services", version.ref = "googleS
 kotlinxSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+app-cash-sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }

@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.googleServices) apply false
     alias(libs.plugins.kotlinxSerialization) apply false
+    alias(libs.plugins.app.cash.sqldelight) apply false
 }
 
 project(":app")

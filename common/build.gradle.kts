@@ -4,6 +4,7 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlinxSerialization)
+    alias(libs.plugins.app.cash.sqldelight)
     id("com.android.library")
 }
 
@@ -17,6 +18,14 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+    }
+}
+
+sqldelight {
+    databases {
+        create("Database") {
+            packageName.set("io.github.zidbrain")
+        }
     }
 }
 
@@ -36,6 +45,7 @@ kotlin {
             dependencies {
                 implementation(libs.androidx.security.crypto)
                 implementation(libs.androidx.lifecycle.viewmodel)
+                implementation(libs.app.cash.sqldelight.android.driver)
             }
         }
         val commonMain by getting {
@@ -43,6 +53,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization)
                 implementation(libs.ktor.client.core)
+                implementation(libs.app.cash.sqldelight.coroutines)
             }
         }
     }
