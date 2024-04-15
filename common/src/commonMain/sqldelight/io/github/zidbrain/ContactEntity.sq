@@ -1,28 +1,30 @@
 CREATE TABLE contactEntity (
     id TEXT PRIMARY KEY NOT NULL,
-    publicKey TEXT UNIQUE NOT NULL,
+    ownerId TEXT NOT NULL,
     email TEXT NOT NULL,
     displayName TEXT NOT NULL
 );
 
-CREATE INDEX contact_public_key ON contactEntity(publicKey);
+CREATE INDEX contact_public_key ON contactEntity(ownerId);
 
 selectAll:
-SELECT * FROM contactEntity WHERE publicKey = ?;
+SELECT * FROM contactEntity WHERE ownerId = ?;
 
 clear:
-DELETE FROM contactEntity;
+DELETE FROM contactEntity WHERE ownerId = ?;
 
 insert:
-INSERT INTO contactEntity(id, publicKey, email, displayName)
+INSERT INTO contactEntity(id, ownerId, email, displayName)
 VALUES ?;
 
 removeWithIds:
-DELETE FROM contactEntity WHERE id IN ?;
+DELETE FROM contactEntity WHERE ownerId = ? AND id IN ?;
 
 searchContacts:
 SELECT * FROM contactEntity
-WHERE displayName LIKE ('%' || :query)
-OR displayName LIKE (:query || '%')
-OR email LIKE ('%' || :query)
-OR email LIKE (:query || '%');
+WHERE ownerId = :ownerId
+AND (displayName LIKE ('%' || :query)
+    OR displayName LIKE (:query || '%')
+    OR email LIKE ('%' || :query)
+    OR email LIKE (:query || '%')
+);

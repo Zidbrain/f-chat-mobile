@@ -9,20 +9,23 @@ import kotlinx.coroutines.flow.Flow
 
 class ContactsDao(private val database: Database) {
 
-    fun getContactsForUserAsFlow(publicKey: String): Flow<List<ContactEntity>> =
-        database.contactEntityQueries.selectAll(publicKey).asFlow().mapToList(Dispatchers.IO)
+    fun getContactsForUserAsFlow(ownerId: String): Flow<List<ContactEntity>> =
+        database.contactEntityQueries.selectAll(ownerId).asFlow().mapToList(Dispatchers.IO)
 
-    fun getContactsForUser(publicKey: String): List<ContactEntity> =
-        database.contactEntityQueries.selectAll(publicKey).executeAsList()
+    fun getContactsForUser(ownerId: String): List<ContactEntity> =
+        database.contactEntityQueries.selectAll(ownerId).executeAsList()
 
-    fun replaceContacts(contacts: List<ContactEntity>) = database.contactEntityQueries.transaction {
-        database.contactEntityQueries.clear()
-        contacts.forEach {
-            database.contactEntityQueries.insert(it)
+    fun replaceContacts(ownerId: String, contacts: List<ContactEntity>) =
+        database.contactEntityQueries.transaction {
+            database.contactEntityQueries.clear(ownerId)
+            contacts.forEach {
+                database.contactEntityQueries.insert(it)
+            }
         }
-    }
 
-    fun searchContacts(name: String) = database.contactEntityQueries.searchContacts(name).executeAsList()
+    fun searchContacts(ownerId: String, name: String) =
+        database.contactEntityQueries.searchContacts(ownerId, name).executeAsList()
 
-    fun removeWithIds(ids: List<String>) = database.contactEntityQueries.removeWithIds(ids)
+    fun removeWithIds(ownerId: String, ids: List<String>) =
+        database.contactEntityQueries.removeWithIds(ownerId, ids)
 }

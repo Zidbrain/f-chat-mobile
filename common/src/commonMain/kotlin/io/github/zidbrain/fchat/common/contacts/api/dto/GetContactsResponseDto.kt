@@ -10,7 +10,7 @@ data class GetContactsResponseDto(val users: List<ContactDto>)
 data class ContactDto(val id: String, val email: String, val displayName: String) {
     fun toEntity(publicKey: String) = ContactEntity(
         id = id,
-        publicKey = publicKey,
+        ownerId = publicKey,
         email = email,
         displayName = displayName
     )

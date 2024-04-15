@@ -303,7 +303,13 @@ private fun ContactsContent(
             icon = { Icon(painterResource(R.drawable.outline_delete_24), null) },
             title = { Text("Removing contacts") },
             text = {
-                AnimatedContent(targetState = alertState, label = "", contentKey = { it::class }) {
+                AnimatedContent(
+                    targetState = alertState,
+                    label = "",
+                    contentKey = { it::class },
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
                     when (it) {
                         is ContactsState.AlertDialogState.Content -> Text(
                             pluralStringResource(

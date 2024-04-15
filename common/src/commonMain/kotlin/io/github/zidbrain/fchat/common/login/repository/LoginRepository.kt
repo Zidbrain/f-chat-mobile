@@ -25,7 +25,7 @@ class LoginRepository(
             devicePublicKey = publicKey
         )
         val response = loginApi.getRefreshToken(request)
-        sessionRepository.createSession(response.refreshToken, publicKey, email)
+        sessionRepository.createSession(response.refreshToken, response.userId)
 
         requestAccessToken()
     }

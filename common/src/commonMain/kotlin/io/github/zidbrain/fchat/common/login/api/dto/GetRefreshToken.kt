@@ -6,4 +6,4 @@ import kotlinx.serialization.Serializable
 data class GetRefreshTokenRequestDto(val idToken: String, val devicePublicKey: String)
 
 @Serializable
-data class GetRefreshTokenResponseDto(val refreshToken: String)
+data class GetRefreshTokenResponseDto(val refreshToken: String, val userId: String)

@@ -1,29 +1,18 @@
 package io.github.zidbrain.fchat.common.host.repository
 
-import io.github.zidbrain.fchat.common.account.encryption.EncryptionService
 import io.github.zidbrain.fchat.common.account.storage.EncryptedStorage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 class SessionRepository(
-    private val encryptedStorage: EncryptedStorage,
-    private val encryptionService: EncryptionService
+    private val encryptedStorage: EncryptedStorage
 ) {
     private fun getUserState(): UserSessionState {
-        val refreshToken = encryptedStorage.refreshToken
-        val email = encryptedStorage.email
-        if (refreshToken == null || email == null)
-            return UserSessionState.Empty
-
-        val devicePublicKey = encryptionService.devicePublicKey(email)
-        return UserSessionState.ActiveSession.Unauthorized(
-            UserSessionInfo(
-                refreshToken = refreshToken,
-                email = email,
-                devicePublicKey = devicePublicKey
-            )
-        )
+        val sessionInfo = encryptedStorage.userSession
+        return if (sessionInfo == null)
+            UserSessionState.Empty
+        else UserSessionState.ActiveSession.Unauthorized(sessionInfo)
     }
 
     private val _state = MutableStateFlow(getUserState())
@@ -32,18 +21,12 @@ class SessionRepository(
     val session: UserSessionInfo
         get() = (_state.value as UserSessionState.ActiveSession).userSessionInfo
 
-    fun createSession(refreshToken: String, devicePublicKey: String, email: String) {
+    fun createSession(refreshToken: String, userId: String) {
+        val session = UserSessionInfo(refreshToken, userId)
         _state.update {
-            UserSessionState.ActiveSession.Unauthorized(
-                UserSessionInfo(
-                    refreshToken = refreshToken,
-                    email = email,
-                    devicePublicKey = devicePublicKey
-                )
-            )
+            UserSessionState.ActiveSession.Unauthorized(session)
         }
-        encryptedStorage.email = email
-        encryptedStorage.refreshToken = refreshToken
+        encryptedStorage.userSession = session
     }
 
     fun authorize(accessToken: String) {
@@ -56,15 +39,13 @@ class SessionRepository(
         _state.update {
             UserSessionState.Empty
         }
-        encryptedStorage.refreshToken = null
-        encryptedStorage.email = null
+        encryptedStorage.userSession = null
     }
 }
 
 data class UserSessionInfo(
     val refreshToken: String,
-    val email: String,
-    val devicePublicKey: String
+    val userId: String
 )
 
 sealed class UserSessionState {

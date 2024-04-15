@@ -18,24 +18,22 @@ class ContactsRepository(
     private val sessionRepository: SessionRepository
 ) {
 
-    val contacts by lazy {
-        dao.getContactsForUserAsFlow(sessionRepository.session.devicePublicKey)
-            .distinctUntilChanged()
-            .mapLatest {
-                it.map { entity -> entity.toModel() }.ifEmpty {
-                    fetchContacts()
-                }
+    val contacts = dao.getContactsForUserAsFlow(sessionRepository.session.userId)
+        .distinctUntilChanged()
+        .mapLatest {
+            it.map { entity -> entity.toModel() }.ifEmpty {
+                fetchContacts()
             }
-    }
+        }
 
     fun getLocalContacts(): List<Contact> =
-        dao.getContactsForUser(sessionRepository.session.devicePublicKey)
+        dao.getContactsForUser(sessionRepository.session.userId)
             .map { it.toModel() }
 
     suspend fun fetchContacts(): List<Contact> {
         val response = api.getContacts()
-        val publicKey = sessionRepository.session.devicePublicKey
-        dao.replaceContacts(response.users.map { it.toEntity(publicKey) })
+        val userId = sessionRepository.session.userId
+        dao.replaceContacts(userId, response.users.map { it.toEntity(userId) })
         return response.users.map { it.toModel() }
     }
 
@@ -44,16 +42,20 @@ class ContactsRepository(
         fetchContacts()
     }
 
-    suspend fun searchContacts(local: Boolean, query: String): List<Contact> =
-        if (local) dao.searchContacts(query).map { it.toModel() }
+    suspend fun searchContacts(local: Boolean, query: String): List<Contact> {
+        val userId = sessionRepository.session.userId
+        return if (local) dao.searchContacts(userId, query).map { it.toModel() }
         else {
             if (query.isBlank()) emptyList()
             else api.searchUsers(query).users.map { it.toModel() }
         }
+    }
 
     suspend fun removeContacts(ids: List<String>) {
         val request = RemoveContactsRequestDto(ids)
         api.removeContacts(request)
-        dao.removeWithIds(ids)
+
+        val userId = sessionRepository.session.userId
+        dao.removeWithIds(userId, ids)
     }
 }

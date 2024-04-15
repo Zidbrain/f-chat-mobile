@@ -3,6 +3,7 @@ package io.github.zidbrain.fchat.common.account.storage
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
+import io.github.zidbrain.fchat.common.host.repository.UserSessionInfo
 
 class AndroidEncryptedStorage(context: Context) : EncryptedStorage {
 
@@ -16,25 +17,22 @@ class AndroidEncryptedStorage(context: Context) : EncryptedStorage {
     )
     private val editor = prefs.edit()
 
-    override var refreshToken: String?
-        get() = prefs.getString(REFRESH_TOKEN, null)
-        set(value) {
-            editor
-                .putString(REFRESH_TOKEN, value)
-                .commit()
+    override var userSession: UserSessionInfo?
+        get() {
+            val token = prefs.getString(REFRESH_TOKEN, null) ?: return null
+            val id = prefs.getString(USER_ID, null) ?: return null
+            return UserSessionInfo(token, id)
         }
-
-    override var email: String?
-        get() = prefs.getString(EMAIL, null)
         set(value) {
             editor
-                .putString(EMAIL, value)
+                .putString(REFRESH_TOKEN, value?.refreshToken)
+                .putString(USER_ID, value?.userId)
                 .commit()
         }
 
     private companion object {
         const val FILE_NAME = "prefs_encrypted"
         const val REFRESH_TOKEN = "refreshToken"
-        const val EMAIL = "email"
+        const val USER_ID = "userId"
     }
 }

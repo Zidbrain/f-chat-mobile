@@ -1,6 +1,7 @@
 package io.github.zidbrain.fchat.common.account.storage
 
+import io.github.zidbrain.fchat.common.host.repository.UserSessionInfo
+
 interface EncryptedStorage {
-    var refreshToken: String?
-    var email: String?
+    var userSession: UserSessionInfo?
 }
