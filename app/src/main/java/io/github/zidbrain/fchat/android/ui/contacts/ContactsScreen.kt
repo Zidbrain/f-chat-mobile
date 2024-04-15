@@ -3,19 +3,21 @@ package io.github.zidbrain.fchat.android.ui.contacts
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -44,6 +46,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -51,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.zidbrain.fchat.android.R
 import io.github.zidbrain.fchat.android.ui.common.ErrorHandler
+import io.github.zidbrain.fchat.android.ui.common.SelectableListItem
 import io.github.zidbrain.fchat.android.ui.main.LocalSnackbarHostState
 import io.github.zidbrain.fchat.common.contacts.model.Contact
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsAction
@@ -59,11 +63,13 @@ import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.Content
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.Error
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.Loading
-import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.SearchState
+import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.TitleState
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.TopBarState
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsViewModel
+import io.github.zidbrain.fchat.common.contacts.viewmodel.toItemState
 import io.github.zidbrain.fchat.util.CollectorEffect
 import io.github.zidbrain.fchat.util.rememberCallbackState
+import io.github.zidbrain.fchat.util.takeIfType
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -73,44 +79,29 @@ fun ContactsPage(
 ) {
     BackHandler(onBack = onBackPressed)
     val state by viewModel.state.collectAsStateWithLifecycle()
-    ContactsContent(
+    ContactsScreen(
         state = state,
         onBackPressed = onBackPressed,
-        initSearch = { viewModel.sendAction(ContactsAction.ClickSearch) },
-        search = { viewModel.sendAction(ContactsAction.SearchInput(it)) },
-        cancelSearch = { viewModel.sendAction(ContactsAction.ClickCancelSearch) },
-        discoverContacts = { viewModel.sendAction(ContactsAction.DiscoverContacts) },
-        addContact = { id, displayName ->
-            viewModel.sendAction(
-                ContactsAction.AddContact(
-                    id,
-                    displayName
-                )
-            )
-        },
-        refresh = { viewModel.sendAction(ContactsAction.Refresh) }
+        sendAction = { viewModel.sendAction(it) }
     )
 
     val snackbarHost = LocalSnackbarHostState.current
     CollectorEffect(flow = viewModel.events) {
         when (it) {
             is ContactsEvent.ContactAdded ->
-                snackbarHost.showSnackbar("${it.displayName} has been added to contacts")
+                snackbarHost.showSnackbar(
+                    message = "${it.displayName} has been added to your contact book"
+                )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ContactsContent(
+private fun ContactsScreen(
     state: ContactsState,
     onBackPressed: () -> Unit,
-    initSearch: () -> Unit,
-    search: (String) -> Unit,
-    cancelSearch: () -> Unit,
-    discoverContacts: () -> Unit,
-    addContact: (id: String, displayName: String) -> Unit,
-    refresh: () -> Unit
+    sendAction: (ContactsAction) -> Unit
 ) = Surface {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Column(
@@ -121,11 +112,8 @@ private fun ContactsContent(
         ContactsTopAppBar(
             scrollBehavior = scrollBehavior,
             state = state,
-            cancelSearch = cancelSearch,
-            search = search,
             onBackPressed = onBackPressed,
-            initSearch = initSearch,
-            discoverContacts = discoverContacts
+            sendAction = sendAction
         )
         AnimatedContent(
             targetState = state,
@@ -133,11 +121,9 @@ private fun ContactsContent(
             contentKey = { it::class }
         ) {
             when (it) {
-                is Content -> ContactsList(
+                is Content -> ContactsContent(
                     content = it,
-                    discoverContacts = discoverContacts,
-                    addContact = addContact,
-                    refresh = refresh
+                    sendAction = sendAction
                 )
 
                 is Error -> ErrorHandler(cause = it.error)
@@ -159,26 +145,25 @@ private fun ContactsContent(
 private fun ContactsTopAppBar(
     scrollBehavior: TopAppBarScrollBehavior,
     state: ContactsState,
-    cancelSearch: () -> Unit,
-    search: (String) -> Unit,
     onBackPressed: () -> Unit,
-    initSearch: () -> Unit,
-    discoverContacts: () -> Unit
+    sendAction: (ContactsAction) -> Unit
 ) = Box {
     val requester = remember { FocusRequester() }
     TopAppBar(
         scrollBehavior = scrollBehavior,
         title = {
             AnimatedContent(
-                targetState = state.topBarState.searchState,
+                targetState = state.topBarState.title,
                 label = "",
                 contentKey = { it::class }
-            ) { searchState ->
-                when (searchState) {
-                    SearchState.Empty -> Text("Your contacts")
-                    is SearchState.Searching -> {
-                        BackHandler(onBack = cancelSearch)
-                        var text by rememberCallbackState(searchState.query, search)
+            ) { titleState ->
+                when (titleState) {
+                    TitleState.Unspecified -> Text("Your contacts")
+                    is TitleState.Searching -> {
+                        BackHandler(onBack = { sendAction(ContactsAction.ClickCancel) })
+                        var text by rememberCallbackState(titleState.query) {
+                            sendAction(ContactsAction.SearchInput(it))
+                        }
                         BasicTextField(
                             modifier = Modifier.focusRequester(requester),
                             value = text,
@@ -189,38 +174,47 @@ private fun ContactsTopAppBar(
                             requester.requestFocus()
                         }
                     }
+
+                    is TitleState.Selecting -> Text(titleState.amount.toString())
                 }
             }
         },
         navigationIcon = {
-            IconButton(onClick = onBackPressed) {
-                Icon(painterResource(R.drawable.outline_arrow_back_24), null)
+            AnimatedContent(
+                targetState = state.topBarState.navButton,
+                label = "Nav Button",
+                contentKey = { it::class }
+            ) {
+                when (it) {
+                    ContactsState.NavButtonState.Back -> IconButton(onClick = onBackPressed) {
+                        Icon(painterResource(R.drawable.outline_arrow_back_24), null)
+                    }
+
+                    ContactsState.NavButtonState.Cancel -> IconButton(
+                        onClick = { sendAction(ContactsAction.ClickCancel) }
+                    ) {
+                        Icon(painterResource(R.drawable.outline_close_24), null)
+                    }
+                }
             }
         },
         actions = {
-            AnimatedContent(
-                targetState = state.topBarState.searchIsCancelButton,
-                label = "Icon Change"
+            AnimatedActionButton(state = state.topBarState.removeContactAction,
+                onClick = { sendAction(ContactsAction.ClickRemoveContacts) }
             ) {
-                if (it)
-                    IconButton(onClick = {
-                        requester.freeFocus()
-                        cancelSearch()
-                    }) {
-                        Icon(painterResource(R.drawable.outline_close_24), null)
-                    }
-                else
-                    IconButton(
-                        onClick = initSearch,
-                        enabled = state.topBarState.searchButtonEnabled
-                    ) {
-                        Icon(painterResource(R.drawable.outline_search_24), null)
-                    }
+                Icon(painterResource(R.drawable.outline_delete_24), null)
             }
-            AnimatedVisibility(visible = state.topBarState.showAddContactButton) {
-                IconButton(onClick = discoverContacts) {
-                    Icon(painterResource(R.drawable.outline_person_add_alt_24), null)
-                }
+            AnimatedActionButton(
+                state = state.topBarState.searchAction,
+                onClick = { sendAction(ContactsAction.ClickSearch) }
+            ) {
+                Icon(painterResource(R.drawable.outline_search_24), null)
+            }
+            AnimatedActionButton(
+                state = state.topBarState.addContactAction,
+                onClick = { sendAction(ContactsAction.DiscoverContacts) }
+            ) {
+                Icon(painterResource(R.drawable.outline_person_add_alt_24), null)
             }
         }
     )
@@ -233,17 +227,31 @@ private fun ContactsTopAppBar(
 }
 
 @Composable
-private fun Contact(modifier: Modifier = Modifier, contact: Contact) =
-    Row(modifier = modifier.fillMaxWidth()) {
+private fun AnimatedActionButton(
+    state: ContactsState.ActionButtonState,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    AnimatedVisibility(visible = state.visible) {
+        IconButton(onClick = onClick, enabled = state.enabled) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun Contact(modifier: Modifier = Modifier, selected: Boolean, contact: Contact) =
+    SelectableListItem(
+        modifier = modifier,
+        selected = selected
+    ) {
         Box(
             modifier = Modifier
-                .size(60.dp)
-                .padding(start = 10.dp, top = 10.dp)
+                .padding(start = 10.dp)
+                .size(50.dp)
                 .background(color = Color.LightGray, shape = CircleShape)
         )
-        Column(
-            modifier = Modifier.padding(top = 10.dp)
-        ) {
+        Column {
             Text(
                 modifier = Modifier.padding(start = 10.dp),
                 text = contact.displayName,
@@ -260,21 +268,58 @@ private fun Contact(modifier: Modifier = Modifier, contact: Contact) =
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ContactsList(
+private fun ContactsContent(
     content: Content,
-    discoverContacts: () -> Unit,
-    addContact: (id: String, displayName: String) -> Unit,
-    refresh: () -> Unit
+    sendAction: (ContactsAction) -> Unit
 ) {
     val refreshState = rememberPullToRefreshState()
     if (refreshState.isRefreshing)
         LaunchedEffect(true) {
-            refresh()
+            sendAction(ContactsAction.Refresh)
         }
     if (!content.isRefreshing)
         LaunchedEffect(false) {
             refreshState.endRefresh()
         }
+
+    content.removeDialog?.let { alertState ->
+        fun result(accept: Boolean) {
+            sendAction(ContactsAction.RemoveContactsDialogResult(accept))
+        }
+
+        val buttonsEnabled = alertState is ContactsState.AlertDialogState.Content
+        AlertDialog(
+            onDismissRequest = { result(false) },
+            confirmButton = {
+                TextButton(onClick = { result(true) }, enabled = buttonsEnabled) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { result(false) }, enabled = buttonsEnabled) {
+                    Text("No")
+                }
+            },
+            icon = { Icon(painterResource(R.drawable.outline_delete_24), null) },
+            title = { Text("Removing contacts") },
+            text = {
+                AnimatedContent(targetState = alertState, label = "", contentKey = { it::class }) {
+                    when (it) {
+                        is ContactsState.AlertDialogState.Content -> Text(
+                            pluralStringResource(
+                                R.plurals.contacts_remove_alert_text,
+                                it.amount,
+                                it.amount
+                            )
+                        )
+
+                        ContactsState.AlertDialogState.Loading -> CircularProgressIndicator()
+                    }
+                }
+            }
+        )
+    }
+
     Box(
         modifier = Modifier
             .nestedScroll(refreshState.nestedScrollConnection)
@@ -286,41 +331,15 @@ private fun ContactsList(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (content.contacts.isNotEmpty())
-                itemsIndexed(
-                    items = content.contacts,
-                    key = { _, it -> it.id },
-                    contentType = { _, _ -> Contact::class }
-                ) { i, it ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                    ) {
-                        Contact(
-                            modifier = Modifier
-                                .clickable {
-                                    if (content.topBarState.searchState !is SearchState.Empty)
-                                        addContact(it.id, it.displayName)
-                                }
-                                .padding(bottom = 10.dp),
-                            contact = it
-                        )
-                        if (i != content.contacts.lastIndex)
-                            HorizontalDivider(
-                                modifier = Modifier.padding(
-                                    start = 8.dp,
-                                    end = 8.dp
-                                )
-                            )
-                    }
-                }
-            else if (content.topBarState.searchState is SearchState.Empty) item {
+                contactList(content.contacts, content.topBarState, sendAction)
+            else if (content.topBarState.title is TitleState.Unspecified) item {
                 Text(
                     modifier = Modifier.padding(top = 40.dp),
                     text = "You do not have\nany contacts yet.",
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.headlineMedium,
                 )
-                TextButton(onClick = discoverContacts) {
+                TextButton(onClick = { sendAction(ContactsAction.DiscoverContacts) }) {
                     Text("Add some")
                 }
             }
@@ -329,40 +348,78 @@ private fun ContactsList(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
+private fun LazyListScope.contactList(
+    contacts: List<ContactsState.ContactItemState>,
+    topBarState: TopBarState,
+    sendAction: (ContactsAction) -> Unit
+) {
+    itemsIndexed(
+        items = contacts,
+        key = { _, it -> it.contact.id },
+        contentType = { _, _ -> Contact::class }
+    ) { i, (it, selected) ->
+        Column(
+            modifier = Modifier
+                .animateItemPlacement()
+                .fillMaxWidth()
+        ) {
+            Contact(
+                modifier = Modifier
+                    .combinedClickable(
+                        onLongClick = {
+                            if (!topBarState.title.takeIfType<TitleState.Searching> { !it.local })
+                                sendAction(ContactsAction.SelectContact(i))
+                        },
+                        onClick = {
+                            if (topBarState.title is TitleState.Searching)
+                                sendAction(
+                                    ContactsAction.AddContact(it.id, it.displayName)
+                                )
+                        }
+                    ),
+                selected = selected,
+                contact = it
+            )
+            if (i != contacts.lastIndex)
+                HorizontalDivider(
+                    modifier = Modifier.padding(
+                        start = 8.dp,
+                        end = 8.dp
+                    )
+                )
+        }
+    }
+}
+
 @Composable
 @Preview
 private fun ContactsPreview() {
-    ContactsContent(
+    ContactsScreen(
         state = Content(
             contacts = List(size = 10) {
                 Contact("$it", "user$it@gmail.com", "User $it")
-            },
+            }.toItemState(),
             topBarState = TopBarState.enabled(),
+            removeDialog = null,
             isRefreshing = false
         ),
         onBackPressed = {},
-        initSearch = {},
-        search = {},
-        cancelSearch = {},
-        discoverContacts = {},
-        addContact = { _, _ -> },
-        refresh = {}
+        sendAction = {}
     )
 }
 
 @Composable
 @Preview
 private fun ContactsPreviewNoContacts() {
-    ContactsContent(
+    ContactsScreen(
         state = Content(
-            emptyList(), TopBarState.Disabled, false
+            contacts = emptyList(),
+            topBarState = TopBarState.Disabled,
+            removeDialog = null,
+            isRefreshing = false,
         ),
         onBackPressed = {},
-        initSearch = {},
-        search = {},
-        cancelSearch = {},
-        discoverContacts = {},
-        addContact = { _, _ -> },
-        refresh = {}
+        sendAction = {}
     )
 }

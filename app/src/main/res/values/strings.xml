@@ -2,4 +2,8 @@
     <string name="app_name">F-Chat-Mobile</string>
     <string name="chat">Chat</string>
     <string name="contacts">Contacts</string>
+    <plurals name="contacts_remove_alert_text">
+        <item quantity="one">Are you sure you want to remove %d contact from your contact book?</item>
+        <item quantity="other">Are you sure you want to remove %d contacts from your contact book?</item>
+    </plurals>
 </resources>

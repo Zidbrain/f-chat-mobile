@@ -97,7 +97,7 @@ private fun MainScreenMenu(
                 )
             }
         },
-        gesturesEnabled = false
+        gesturesEnabled = drawerState.isOpen
     ) {
         MainScreenContent(startPage = startPage, drawerState = drawerState)
     }
@@ -213,7 +213,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.enterTransitionFor
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.exitTransitionForPage(): ExitTransition {
     val initial = MainScreenPage.valueOf(initialState.destination.route!!).ordinal
     val target = MainScreenPage.valueOf(targetState.destination.route!!).ordinal
-    if (target == initial) ExitTransition.None
+    if (target == initial) return ExitTransition.None
 
     return if (target > initial) slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
     else slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right)

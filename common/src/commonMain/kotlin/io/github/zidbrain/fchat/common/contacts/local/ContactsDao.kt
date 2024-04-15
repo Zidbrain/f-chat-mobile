@@ -23,4 +23,6 @@ class ContactsDao(private val database: Database) {
     }
 
     fun searchContacts(name: String) = database.contactEntityQueries.searchContacts(name).executeAsList()
+
+    fun removeWithIds(ids: List<String>) = database.contactEntityQueries.removeWithIds(ids)
 }

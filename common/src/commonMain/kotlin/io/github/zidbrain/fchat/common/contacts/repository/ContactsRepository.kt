@@ -3,6 +3,7 @@
 package io.github.zidbrain.fchat.common.contacts.repository
 
 import io.github.zidbrain.fchat.common.contacts.api.ContactsApi
+import io.github.zidbrain.fchat.common.contacts.api.dto.RemoveContactsRequestDto
 import io.github.zidbrain.fchat.common.contacts.local.ContactsDao
 import io.github.zidbrain.fchat.common.contacts.model.Contact
 import io.github.zidbrain.fchat.common.contacts.model.toModel
@@ -49,4 +50,10 @@ class ContactsRepository(
             if (query.isBlank()) emptyList()
             else api.searchUsers(query).users.map { it.toModel() }
         }
+
+    suspend fun removeContacts(ids: List<String>) {
+        val request = RemoveContactsRequestDto(ids)
+        api.removeContacts(request)
+        dao.removeWithIds(ids)
+    }
 }

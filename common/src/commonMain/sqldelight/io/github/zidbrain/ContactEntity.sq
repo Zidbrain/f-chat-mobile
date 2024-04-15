@@ -17,6 +17,9 @@ insert:
 INSERT INTO contactEntity(id, publicKey, email, displayName)
 VALUES ?;
 
+removeWithIds:
+DELETE FROM contactEntity WHERE id IN ?;
+
 searchContacts:
 SELECT * FROM contactEntity
 WHERE displayName LIKE ('%' || :query)
