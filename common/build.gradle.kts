@@ -1,5 +1,7 @@
 @file:Suppress("OPT_IN_USAGE")
 
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -18,6 +20,11 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+
+        isCoreLibraryDesugaringEnabled = true
+    }
+    dependencies {
+        coreLibraryDesugaring(libs.desugar.jdk.libs)
     }
 }
 
@@ -34,10 +41,8 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
     androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "1.8"
-            }
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_1_8)
         }
     }
     sourceSets {
@@ -53,6 +58,8 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization)
                 implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.websockets)
+                implementation(libs.ktor.client.serialization.json)
                 implementation(libs.app.cash.sqldelight.coroutines)
             }
         }

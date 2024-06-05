@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.googleServices)
     alias(libs.plugins.kotlinxSerialization)
+    alias(libs.plugins.kotlin.compose.compiler)
 }
 
 val propertiesFile = project.file("secrets.properties")
@@ -52,6 +53,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "1.8"
@@ -60,8 +63,9 @@ android {
         compose = true
         buildConfig = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.11"
+    composeCompiler {
+        enableStrongSkippingMode = true
+        includeSourceInformation = true
     }
     packaging {
         resources {
@@ -72,6 +76,10 @@ android {
 
 dependencies {
     implementation(project(":common"))
+
+    dependencies {
+        coreLibraryDesugaring(libs.desugar.jdk.libs)
+    }
 
     // credentials
     implementation(libs.androidx.credentials.play.services.auth)
@@ -100,9 +108,9 @@ dependencies {
 
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
