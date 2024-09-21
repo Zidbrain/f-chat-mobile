@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.konan.properties.Properties
 import java.io.FileInputStream
 
 plugins {
-    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.googleServices)
     alias(libs.plugins.kotlinxSerialization)
@@ -16,12 +16,12 @@ apikeyProperties.load(FileInputStream(propertiesFile))
 
 android {
     namespace = "io.github.zidbrain.fchat.android"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "io.github.zidbrain.fchat"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -53,8 +53,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
-
-        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "1.8"
@@ -64,7 +62,6 @@ android {
         buildConfig = true
     }
     composeCompiler {
-        enableStrongSkippingMode = true
         includeSourceInformation = true
     }
     packaging {
@@ -76,10 +73,6 @@ android {
 
 dependencies {
     implementation(project(":common"))
-
-    dependencies {
-        coreLibraryDesugaring(libs.desugar.jdk.libs)
-    }
 
     // credentials
     implementation(libs.androidx.credentials.play.services.auth)
@@ -101,11 +94,12 @@ dependencies {
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.logger)
-    implementation(libs.ktor.content.negotiation)
+    implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.content.serialization.json)
     implementation(libs.kotlinx.serialization)
     implementation(libs.ktor.client.auth)
 
+    implementation(libs.kotlinx.datetime)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -113,6 +107,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)

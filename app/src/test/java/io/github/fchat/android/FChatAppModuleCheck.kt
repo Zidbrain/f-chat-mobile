@@ -1,7 +1,7 @@
 package io.github.fchat.android
 
 import android.content.Context
-import io.github.zidbrain.fchat.common.account.encryption.EncryptionService
+import io.github.zidbrain.fchat.common.account.cryptography.CryptographyService
 import io.github.zidbrain.fchat.common.account.storage.EncryptedStorage
 import io.github.zidbrain.fchat.di.allModules
 import org.junit.Rule
@@ -23,7 +23,7 @@ class FChatAppModuleCheck : KoinTest {
     fun koinConfigurationIsCorrect() {
         checkKoinModules(allModules) {
             declareMock<EncryptedStorage>()
-            declareMock<EncryptionService>()
+            declareMock<CryptographyService>()
             declareMock<Context>()
         }
     }

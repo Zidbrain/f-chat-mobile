@@ -4,7 +4,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.update
 
 @Suppress("UNCHECKED_CAST")
-class MVIActionHandler<State : Any, Event> internal constructor(private val viewModel: MVIViewModel<*, State, Event>) {
+class MVIActionHandler<State : Any, Event> internal constructor(
+    private val viewModel: MVIViewModel<*, State, Event>,
+    internal val actionDebug: Any?
+) {
     fun setState(update: (State).() -> State) {
         viewModel.mState.update { it.update() }
     }

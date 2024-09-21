@@ -1,0 +1,84 @@
+import io.github.zidbrain.fchat.common.chat.repository.MessageStatus;
+
+CREATE TABLE conversationEntity (
+    id TEXT PRIMARY KEY NOT NULL,
+    ownerId TEXT NOT NULL,
+    symmetricKey TEXT NOT NULL,
+    name TEXT
+);
+
+CREATE INDEX conversation_owner ON conversationEntity(ownerId);
+
+CREATE TABLE participantEntity (
+    id TEXT NOT NULL PRIMARY KEY
+);
+
+CREATE TABLE conversationParticipant (
+    conversationId TEXT NOT NULL,
+    participantId TEXT NOT NULL,
+    PRIMARY KEY (conversationId, participantId),
+    FOREIGN KEY (conversationId) REFERENCES conversationEntity(id),
+    FOREIGN KEY (participantId) REFERENCES participantEntity(id)
+);
+
+CREATE TABLE messageEntity (
+    id TEXT PRIMARY KEY NOT NULL,
+    content TEXT NOT NULL,
+    conversationId TEXT NOT NULL,
+    sentAt INTEGER NOT NULL,
+    sentBy TEXT NOT NULL,
+    status TEXT AS MessageStatus NOT NULL,
+    FOREIGN KEY (conversationId) REFERENCES conversationEntity(id),
+    FOREIGN KEY (sentBy) REFERENCES participantEntity(id)
+);
+
+CREATE INDEX message_conversation_id ON messageEntity(conversationId);
+CREATE INDEX message_sent_at ON messageEntity(sentAt);
+
+CREATE VIEW conversationWithMessages AS
+SELECT conversationEntity.id,
+    conversationEntity.name AS conversationName,
+    conversationEntity.ownerId,
+    conversationEntity.symmetricKey,
+    participantEntity.id AS participantId,
+    messageEntity.id AS messageId,
+    messageEntity.content AS messageContent,
+    messageEntity.sentAt AS messageSentAt,
+    messageEntity.sentBy AS messageSentBy,
+    messageEntity.status AS messageStatus
+    FROM conversationEntity
+    JOIN conversationParticipant ON conversationParticipant.conversationId = conversationEntity.id
+    JOIN participantEntity ON conversationParticipant.participantId = participantEntity.id
+    LEFT JOIN messageEntity ON messageEntity.conversationId = conversationEntity.id;
+
+getAllConversations:
+SELECT * FROM conversationWithMessages
+    WHERE ownerId = :ownerId AND (messageId = (
+        SELECT messageEntity.id FROM messageEntity
+        WHERE messageEntity.conversationId = conversationWithMessages.id
+        ORDER BY messageEntity.sentAt DESC
+        LIMIT 1
+    ) OR messageId IS NULL);
+
+createParticipant:
+INSERT OR IGNORE INTO participantEntity(id) VALUES ?;
+
+getConversationById:
+SELECT * FROM conversationWithMessages
+    WHERE ownerId = :ownerId AND id = :conversationId
+    ORDER BY messageSentAt DESC;
+
+createConversation:
+INSERT OR REPLACE INTO conversationEntity(id, ownerId, symmetricKey) VALUES ?;
+
+addParticipantToConversation:
+INSERT OR IGNORE INTO conversationParticipant VALUES ?;
+
+addMessage:
+INSERT INTO messageEntity VALUES ?;
+
+clearMessagesForConversation:
+DELETE FROM messageEntity WHERE conversationId = :conversationId;
+
+setMessageStatus:
+UPDATE messageEntity SET status = ? WHERE id = ?;

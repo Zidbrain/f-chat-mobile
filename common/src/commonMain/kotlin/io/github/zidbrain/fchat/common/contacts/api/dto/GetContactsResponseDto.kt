@@ -4,10 +4,10 @@ import io.github.zidbrain.ContactEntity
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class GetContactsResponseDto(val users: List<ContactDto>)
+data class GetContactsResponseDto(val users: List<UserDto>)
 
 @Serializable
-data class ContactDto(val id: String, val email: String, val displayName: String) {
+data class UserDto(val id: String, val email: String, val displayName: String) {
     fun toEntity(publicKey: String) = ContactEntity(
         id = id,
         ownerId = publicKey,

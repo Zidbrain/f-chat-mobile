@@ -21,8 +21,11 @@ class SessionRepository(
     val session: UserSessionInfo
         get() = (_state.value as UserSessionState.ActiveSession).userSessionInfo
 
-    fun createSession(refreshToken: String, userId: String) {
-        val session = UserSessionInfo(refreshToken, userId)
+    val accessToken: String
+        get() = (_state.value as UserSessionState.ActiveSession.Authorized).accessToken
+
+    fun createSession(refreshToken: String, userId: String, email: String) {
+        val session = UserSessionInfo(refreshToken, userId, email)
         _state.update {
             UserSessionState.ActiveSession.Unauthorized(session)
         }
@@ -45,7 +48,8 @@ class SessionRepository(
 
 data class UserSessionInfo(
     val refreshToken: String,
-    val userId: String
+    val userId: String,
+    val email: String
 )
 
 sealed class UserSessionState {

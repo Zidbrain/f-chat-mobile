@@ -1,18 +1,17 @@
 package io.github.zidbrain.fchat.android.ui.login
 
-import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -44,35 +43,37 @@ fun LoginScreen(viewModel: LoginViewModel = koinViewModel()) {
 private fun LoginScreenContent(
     state: LoginState,
     onTokenAcquired: (String, String) -> Unit
-) = Surface {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Logo()
-            AnimatedVisibility(visible = state is LoginState.Content || state is LoginState.Error) {
-                AnimatedContent(
-                    modifier = Modifier.padding(top = 20.dp),
-                    targetState = state,
-                    contentAlignment = Alignment.Center,
-                    label = "expand animation"
-                ) {
-                    when (it) {
-                        LoginState.Empty -> {}
-                        is LoginState.Content -> {
-                            if (it.loading) CircularProgressIndicator()
-                            else LoginButton(onTokenAcquired)
-                        }
+) = Surface(
+    modifier = Modifier
+        .fillMaxSize()
+) {
+    Column(
+        modifier = Modifier.safeContentPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Logo()
+        AnimatedVisibility(visible = state is LoginState.Content || state is LoginState.Error) {
+            AnimatedContent(
+                modifier = Modifier.padding(top = 20.dp),
+                targetState = state,
+                contentAlignment = Alignment.Center,
+                label = "expand animation"
+            ) {
+                when (it) {
+                    LoginState.Empty -> {}
+                    is LoginState.Content -> {
+                        if (it.loading) CircularProgressIndicator()
+                        else LoginButton(onTokenAcquired)
+                    }
 
-                        is LoginState.Error -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            LoginButton(onTokenAcquired)
-                            LaunchedEffect(Unit) {
-                                Log.e("Error", it.cause.stackTraceToString())
-                            }
-                            Text(
-                                modifier = Modifier.padding(horizontal = 10.dp),
-                                text = "Unfortunately an error occurred while trying to login.\nPlease try again.",
-                                textAlign = TextAlign.Center
-                            )
-                        }
+                    is LoginState.Error -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        LoginButton(onTokenAcquired)
+                        Text(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            text = "Unfortunately an error occurred while trying to login.\nPlease try again.",
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }

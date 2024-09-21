@@ -2,17 +2,16 @@
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlinxSerialization)
     alias(libs.plugins.app.cash.sqldelight)
-    id("com.android.library")
+    alias(libs.plugins.android.library)
 }
 
 android {
     namespace = "io.github.zidbrain.fchat.common"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 24
@@ -20,11 +19,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
-
-        isCoreLibraryDesugaringEnabled = true
-    }
-    dependencies {
-        coreLibraryDesugaring(libs.desugar.jdk.libs)
     }
 }
 
@@ -49,19 +43,22 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 implementation(libs.androidx.security.crypto)
-                implementation(libs.androidx.lifecycle.viewmodel)
                 implementation(libs.app.cash.sqldelight.android.driver)
             }
         }
         val commonMain by getting {
             dependencies {
-                implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization)
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.websockets)
-                implementation(libs.ktor.client.serialization.json)
+                implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.app.cash.sqldelight.coroutines)
             }
         }
+    }
+
+    dependencies {
+        api(project(":mvi"))
     }
 }

@@ -1,26 +1,24 @@
-package io.github.zidbrain.fchat.common.account.encryption
+package io.github.zidbrain.fchat.common.account.cryptography
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import javax.crypto.KeyGenerator
 import javax.security.auth.x500.X500Principal
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 
-class AndroidEncryptionService : EncryptionService {
+class AndroidCryptographyService : CryptographyService {
 
     private val keyStore = KeyStore.getInstance("AndroidKeyStore").apply {
         load(null)
     }
 
-    @OptIn(ExperimentalEncodingApi::class)
-    private fun ByteArray.encodeBase64(): String =
-        Base64.Default.encode(this)
+    private val keys = mutableMapOf<String, RSAKeyPair>()
 
-    private val keys = mutableMapOf<String, String>()
+    override fun deviceKeyPair(email: String): RSAKeyPair {
+        keys[email]?.let { return it }
 
-    override fun devicePublicKey(email: String): String {
         val entryAlias = DEVICE_KEYS + "_$email"
         val generator =
             KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore").also {
@@ -37,15 +35,20 @@ class AndroidEncryptionService : EncryptionService {
                 it.initialize(paramSpec)
             }
 
-        val publicKey = if (!keyStore.containsAlias(entryAlias))
-            generator.genKeyPair().public.encoded.encodeBase64()
+        val keys = if (!keyStore.containsAlias(entryAlias))
+            generator.genKeyPair().toModel()
         else {
             val privateKeyEntry = keyStore.getEntry(entryAlias, null) as KeyStore.PrivateKeyEntry
-            privateKeyEntry.certificate.publicKey.encoded.encodeBase64()
+            KeyPair(privateKeyEntry.certificate.publicKey, privateKeyEntry.privateKey).toModel()
         }
-        keys[email] = publicKey
+        this.keys[email] = keys
 
-        return publicKey
+        return keys
+    }
+
+    override fun generateSymmetricKey(): AESKey {
+        val generator = KeyGenerator.getInstance("AES")
+        return generator.generateKey().toModel()
     }
 
     private companion object {

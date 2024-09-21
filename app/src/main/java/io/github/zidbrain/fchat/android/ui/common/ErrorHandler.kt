@@ -1,6 +1,5 @@
 package io.github.zidbrain.fchat.android.ui.common
 
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
@@ -16,6 +15,5 @@ fun ErrorHandler(cause: Throwable) {
         scope.launch {
             snackbar.showSnackbar("Error occurred", withDismissAction = true)
         }
-        Log.e("Error", "Exception", cause)
     }
 }
