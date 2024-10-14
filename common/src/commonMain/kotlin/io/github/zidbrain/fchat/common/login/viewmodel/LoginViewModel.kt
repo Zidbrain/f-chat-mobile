@@ -5,7 +5,9 @@ import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.host.repository.UserSessionState
 import io.github.zidbrain.fchat.common.login.repository.LoginRepository
 import io.github.zidbrain.fchat.mvi.MVIViewModel
+import org.koin.android.annotation.KoinViewModel
 
+@KoinViewModel
 class LoginViewModel(
     private val loginRepository: LoginRepository,
     private val sessionRepository: SessionRepository

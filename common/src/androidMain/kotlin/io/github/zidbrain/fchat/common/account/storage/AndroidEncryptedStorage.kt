@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import io.github.zidbrain.fchat.common.host.repository.UserSessionInfo
+import org.koin.core.annotation.Single
 
+@Single
 class AndroidEncryptedStorage(context: Context) : EncryptedStorage {
 
     private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)

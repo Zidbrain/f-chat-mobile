@@ -2,57 +2,84 @@
 
 package io.github.zidbrain.fchat.common.conversation.api.dto
 
+import io.github.zidbrain.fchat.common.util.randomUUID
 import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 
+@Serializable
+data class ChatSocketMessageOut(
+    val socketMessageId: String = randomUUID(),
+    val content: ChatSocketMessageOutContent
+)
+
 @JsonClassDiscriminator("type")
 @Serializable
-sealed class WebSocketMessageOut {
-
-    @Serializable
-    @SerialName("request")
-    data class Request(val payload: RequestPayload) : WebSocketMessageOut()
+sealed class ChatSocketMessageOutContent {
 
     @JsonClassDiscriminator("type")
+    @SerialName("payload")
     @Serializable
-    sealed class RequestPayload {
-
+    sealed class Payload : ChatSocketMessageOutContent() {
         @Serializable
-        @SerialName("message")
-        data class Message(val message: String, val conversationId: String) : RequestPayload()
+        @SerialName("messageRequest")
+        data class CreateMessageRequest(
+            val message: String,
+            val conversationId: String,
+        ) : Payload()
     }
 
+    @JsonClassDiscriminator("type")
+    @SerialName("control")
     @Serializable
-    @SerialName("ok")
-    data object Ok : WebSocketMessageOut()
+    sealed class Control : ChatSocketMessageOutContent() {
+        @Serializable
+        @SerialName("ok")
+        data object Ok : Control()
+    }
 }
 
-@JsonClassDiscriminator("type")
 @Serializable
-sealed class WebSocketMessageIn {
+@JsonClassDiscriminator("type")
+sealed class ChatSocketMessageInContent {
 
-    @Serializable
-    @SerialName("content")
-    data class Content(val payload: ContentPayload) : WebSocketMessageIn()
-
-    @Serializable
     @JsonClassDiscriminator("type")
-    sealed class ContentPayload {
-
+    @SerialName("payload")
+    @Serializable
+    sealed class Payload : ChatSocketMessageInContent() {
         @Serializable
         @SerialName("message")
         data class Message(
+            val externalId: String,
             val message: String,
             val senderId: String,
             val conversationId: String,
-            val sentAt: Instant
-        ) : ContentPayload()
+            val sentAt: Instant,
+        ) : Payload()
     }
 
+    @JsonClassDiscriminator("type")
+    @SerialName("control")
     @Serializable
-    @SerialName("ok")
-    data object Ok : WebSocketMessageIn()
+    sealed class Control : ChatSocketMessageInContent() {
+        @Serializable
+        @SerialName("messageCreated")
+        data class MessageCreated(val messageId: String) : Control()
+
+        @Serializable
+        @SerialName("ok")
+        data object Ok : Control()
+
+        @Serializable
+        @SerialName("error")
+        data class Error(val description: String) : Control()
+    }
 }
+
+@Serializable
+data class ChatSocketMessageIn(
+    val socketMessageId: String,
+    val content: ChatSocketMessageInContent
+)

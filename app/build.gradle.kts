@@ -8,11 +8,16 @@ plugins {
     alias(libs.plugins.googleServices)
     alias(libs.plugins.kotlinxSerialization)
     alias(libs.plugins.kotlin.compose.compiler)
+    alias(libs.plugins.ksp)
 }
 
 val propertiesFile = project.file("secrets.properties")
 val apikeyProperties = Properties()
 apikeyProperties.load(FileInputStream(propertiesFile))
+
+kotlin {
+    jvmToolchain(22)
+}
 
 android {
     namespace = "io.github.zidbrain.fchat.android"
@@ -50,13 +55,6 @@ android {
             )
         }
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -69,6 +67,10 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+ksp {
+    arg("KOIN_CONFIG_CHECK","true")
 }
 
 dependencies {
@@ -85,6 +87,7 @@ dependencies {
     // koin
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android.compose)
+    ksp(libs.koin.ksp.compiler)
     testImplementation(libs.koin.test)
 
     // mockito
@@ -112,7 +115,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    testImplementation(libs.junit)
+    testImplementation(libs.kotlin.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

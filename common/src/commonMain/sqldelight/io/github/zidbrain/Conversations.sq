@@ -3,7 +3,7 @@ import io.github.zidbrain.fchat.common.chat.repository.MessageStatus;
 CREATE TABLE conversationEntity (
     id TEXT PRIMARY KEY NOT NULL,
     ownerId TEXT NOT NULL,
-    symmetricKey TEXT NOT NULL,
+    encryptedSymmetricKey BLOB NOT NULL,
     name TEXT
 );
 
@@ -23,6 +23,7 @@ CREATE TABLE conversationParticipant (
 
 CREATE TABLE messageEntity (
     id TEXT PRIMARY KEY NOT NULL,
+    externalId TEXT UNIQUE,
     content TEXT NOT NULL,
     conversationId TEXT NOT NULL,
     sentAt INTEGER NOT NULL,
@@ -39,9 +40,10 @@ CREATE VIEW conversationWithMessages AS
 SELECT conversationEntity.id,
     conversationEntity.name AS conversationName,
     conversationEntity.ownerId,
-    conversationEntity.symmetricKey,
+    conversationEntity.encryptedSymmetricKey,
     participantEntity.id AS participantId,
     messageEntity.id AS messageId,
+    messageEntity.externalId AS externalId,
     messageEntity.content AS messageContent,
     messageEntity.sentAt AS messageSentAt,
     messageEntity.sentBy AS messageSentBy,
@@ -69,16 +71,19 @@ SELECT * FROM conversationWithMessages
     ORDER BY messageSentAt DESC;
 
 createConversation:
-INSERT OR REPLACE INTO conversationEntity(id, ownerId, symmetricKey) VALUES ?;
+INSERT OR REPLACE INTO conversationEntity(id, ownerId, encryptedSymmetricKey) VALUES ?;
 
 addParticipantToConversation:
 INSERT OR IGNORE INTO conversationParticipant VALUES ?;
 
 addMessage:
-INSERT INTO messageEntity VALUES ?;
+INSERT OR REPLACE INTO messageEntity VALUES ?;
 
 clearMessagesForConversation:
 DELETE FROM messageEntity WHERE conversationId = :conversationId;
 
 setMessageStatus:
 UPDATE messageEntity SET status = ? WHERE id = ?;
+
+setMessageExternalId:
+UPDATE messageEntity SET externalId = ? WHERE id = ?;

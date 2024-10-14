@@ -1,5 +1,6 @@
 package io.github.zidbrain.fchat.mvi
 
+import io.github.zidbrain.fchat.logError
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -48,9 +49,10 @@ abstract class MVIViewModel<in Action : Any, State : Any, Event>(initialState: S
 
     protected fun buildAction(
         cancellable: Boolean = true,
+        logger: (tag: String, msg: String, throwable: Exception) -> Unit = ::logError,
         block: suspend MVIActionHandler<State, Event>.() -> Unit
     ): MVIActionBuilder<State, Event> =
-        MVIActionBuilder(this, block).also { it.cancelable(cancellable) }
+        MVIActionBuilder(this, logger, block).also { it.cancelable(cancellable) }
 
     protected abstract fun handleAction(action: Action): MVIActionBuilder<State, Event>
     protected open val initAction: MVIActionBuilder<State, Event>? = null

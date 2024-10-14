@@ -2,12 +2,14 @@ package io.github.zidbrain.fchat.common.account.cryptography
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import org.koin.core.annotation.Single
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import javax.crypto.KeyGenerator
 import javax.security.auth.x500.X500Principal
 
+@Single
 class AndroidCryptographyService : CryptographyService {
 
     private val keyStore = KeyStore.getInstance("AndroidKeyStore").apply {
@@ -28,7 +30,7 @@ class AndroidCryptographyService : CryptographyService {
                 ).run {
                     setKeySize(4096)
                     setCertificateSubject(X500Principal("CN=F-Chat"))
-                    setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_OAEP)
+                    setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
                     setDigests(KeyProperties.DIGEST_SHA256)
                     build()
                 }

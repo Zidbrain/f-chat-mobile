@@ -4,7 +4,9 @@ import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.user.api.UserApi
 import io.github.zidbrain.fchat.common.user.model.User
 import io.github.zidbrain.fchat.common.user.model.toModel
+import org.koin.core.annotation.Single
 
+@Single
 class UserRepository(private val api: UserApi, private val sessionRepository: SessionRepository) {
 
     private val users = mutableMapOf<String, User>()

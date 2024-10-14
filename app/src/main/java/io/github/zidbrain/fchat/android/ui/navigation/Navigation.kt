@@ -1,12 +1,15 @@
 package io.github.zidbrain.fchat.android.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import io.github.zidbrain.fchat.android.ui.conversation.ConversationScreen
 import io.github.zidbrain.fchat.android.ui.main.MainScreen
+import io.github.zidbrain.fchat.common.chat.viewmodel.ChatAction
+import io.github.zidbrain.fchat.common.chat.viewmodel.ChatViewModel
 import io.github.zidbrain.fchat.common.nav.ConversationNavigationInfo
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
@@ -15,12 +18,21 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun FChatNavHost() {
     val navController = rememberNavController()
+
+    val chatViewModel = koinViewModel<ChatViewModel>()
+
+    LifecycleResumeEffect(Unit) {
+        chatViewModel.sendAction(ChatAction.RestoreConnection)
+        onPauseOrDispose { chatViewModel.sendAction(ChatAction.PauseConnection) }
+    }
+
     NavHost(
         navController = navController,
         startDestination = Destination.Main::class
     ) {
         composable<Destination.Main> {
             MainScreen(
+                chatViewModel = chatViewModel,
                 onNavigateToConversation = {
                     navController.navigate(Destination.Conversation.fromNavInfo(it))
                 }

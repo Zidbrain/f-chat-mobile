@@ -4,7 +4,9 @@ import io.github.zidbrain.fchat.common.account.storage.EncryptedStorage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import org.koin.core.annotation.Single
 
+@Single
 class SessionRepository(
     private val encryptedStorage: EncryptedStorage
 ) {

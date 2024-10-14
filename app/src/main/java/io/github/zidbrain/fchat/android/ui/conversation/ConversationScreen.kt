@@ -180,7 +180,7 @@ private fun MessageColumn(
                     message = it,
                     modifier = Modifier
                         .fillParentMaxWidth()
-                        .padding(top = 6.dp, start = 10.dp, end = 10.dp)
+                        .padding(top = 6.dp, start = 14.dp, end = 14.dp)
                         .animateItem()
                 )
             }
@@ -254,18 +254,19 @@ private fun MessageChip(message: ConversationMessage, modifier: Modifier = Modif
                 modifier = Modifier.align(Alignment.Bottom),
                 targetState = message.status,
                 label = "status anim"
-            ) {
-                val resource = when (it) {
+            ) { status ->
+                val resource = when (status) {
                     MessageStatus.Initial -> null
                     MessageStatus.Delivered -> R.drawable.outline_done_24
                     MessageStatus.Read -> R.drawable.outline_done_all_24
+                    MessageStatus.NotDelivered -> R.drawable.outline_error_outline_24
                 }
                 resource?.let {
                     Icon(
                         modifier = Modifier
                             .padding(start = 2.dp)
                             .size(14.dp),
-                        painter = painterResource(resource),
+                        painter = painterResource(it),
                         contentDescription = null
                     )
                 }

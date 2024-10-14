@@ -31,6 +31,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
@@ -41,6 +42,8 @@ import androidx.navigation.compose.rememberNavController
 import io.github.zidbrain.fchat.android.R
 import io.github.zidbrain.fchat.android.ui.contacts.ContactsPage
 import io.github.zidbrain.fchat.android.ui.conversation.ConversationList
+import io.github.zidbrain.fchat.common.chat.viewmodel.ChatState
+import io.github.zidbrain.fchat.common.chat.viewmodel.ChatViewModel
 import io.github.zidbrain.fchat.common.main.MainAction
 import io.github.zidbrain.fchat.common.main.MainEvent
 import io.github.zidbrain.fchat.common.main.MainViewModel
@@ -55,6 +58,7 @@ val LocalSnackbarHostState = staticCompositionLocalOf { SnackbarHostState() }
 @Composable
 fun MainScreen(
     viewModel: MainViewModel = koinViewModel(),
+    chatViewModel: ChatViewModel = koinViewModel(),
     startPage: MainScreenPage = MainScreenPage.Chat,
     onNavigateToConversation: (ConversationNavigationInfo) -> Unit
 ) {
@@ -64,7 +68,10 @@ fun MainScreen(
             is MainEvent.Error -> snackbarHostState.showError()
         }
     }
+
+    val chatState by chatViewModel.state.collectAsStateWithLifecycle()
     MainScreenMenu(
+        chatState = chatState,
         startPage = startPage,
         onLogout = { viewModel.sendAction(MainAction.Logout) },
         onNavigateToConversation = onNavigateToConversation
@@ -74,6 +81,7 @@ fun MainScreen(
 @Composable
 private fun MainScreenMenu(
     startPage: MainScreenPage = MainScreenPage.Chat,
+    chatState: ChatState,
     onLogout: () -> Unit,
     onNavigateToConversation: (ConversationNavigationInfo) -> Unit
 ) {
@@ -104,6 +112,7 @@ private fun MainScreenMenu(
         gesturesEnabled = drawerState.isOpen
     ) {
         MainScreenContent(
+            chatState = chatState,
             startPage = startPage,
             drawerState = drawerState,
             onNavigateToConversation = onNavigateToConversation
@@ -115,6 +124,7 @@ private fun MainScreenMenu(
 private fun MainScreenContent(
     startPage: MainScreenPage,
     drawerState: DrawerState,
+    chatState: ChatState,
     navController: NavHostController = rememberNavController(),
     onNavigateToConversation: (ConversationNavigationInfo) -> Unit,
 ) {
@@ -133,7 +143,7 @@ private fun MainScreenContent(
         },
         snackbarHost = {
             SnackbarHost(hostState = LocalSnackbarHostState.current)
-        }
+        },
     ) { paddingValues ->
         NavHost(
             modifier = Modifier.padding(paddingValues),
@@ -147,6 +157,7 @@ private fun MainScreenContent(
             pages.forEach { page ->
                 composable(page.name) {
                     MainScreenPages(
+                        chatState = chatState,
                         page = page,
                         drawerState = drawerState,
                         navController = navController,
@@ -186,11 +197,13 @@ private fun MainScreenPages(
     navController: NavController,
     page: MainScreenPage,
     drawerState: DrawerState,
+    chatState: ChatState,
     navigateToConversation: (ConversationNavigationInfo) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     when (page) {
         MainScreenPage.Chat -> ConversationList(
+            chatState = chatState,
             onMenuClicked = {
                 scope.launch {
                     drawerState.open()
@@ -242,7 +255,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.exitTransitionForP
 @Composable
 @Preview
 private fun MainScreenPreview() {
-    MainScreenMenu(onLogout = { }) {
+    MainScreenMenu(chatState = ChatState.Connected, onLogout = { }) {
 
     }
 }

@@ -1,5 +1,6 @@
 package io.github.zidbrain.fchat.common.conversation.viewmodel
 
+import io.github.zidbrain.fchat.common.chat.repository.ChatRepository
 import io.github.zidbrain.fchat.common.chat.repository.Conversation
 import io.github.zidbrain.fchat.common.chat.repository.MessageStatus
 import io.github.zidbrain.fchat.common.conversation.repository.ConversationRepository
@@ -13,10 +14,15 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.koin.android.annotation.KoinViewModel
+import org.koin.core.annotation.InjectedParam
 
+@KoinViewModel
 class ConversationViewModel(
+    @InjectedParam
     private var navInfo: ConversationNavigationInfo,
     private val conversationRepository: ConversationRepository,
+    private val chatRepository: ChatRepository,
     private val userRepository: UserRepository,
 ) : MVIViewModel<ConversationAction, ConversationState, Nothing>(ConversationState.Loading) {
 
@@ -88,14 +94,14 @@ class ConversationViewModel(
                         }
                     }
                     val message = action.message.trimEnd { mes -> mes.isISOControl() }
-                    conversationRepository.createMessageIn(convId, message)
+                    chatRepository.sendNewMessage(convId, message)
                 }
 
                 ConversationAction.ClearHistory -> conversationId?.let {
                     conversationRepository.clearHistoryForConversation(it)
                 }
             }
-        }
+        }.catch {  }
 }
 
 sealed class ConversationAction {

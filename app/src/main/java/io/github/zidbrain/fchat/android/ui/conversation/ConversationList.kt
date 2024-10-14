@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -23,6 +22,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.zidbrain.fchat.android.R
 import io.github.zidbrain.fchat.android.ui.common.RoundedIcon
 import io.github.zidbrain.fchat.common.chat.repository.Conversation
+import io.github.zidbrain.fchat.common.chat.viewmodel.ChatState
 import io.github.zidbrain.fchat.common.conversation.viewmodel.ConversationListState
 import io.github.zidbrain.fchat.common.conversation.viewmodel.ConversationListViewModel
 import io.github.zidbrain.fchat.common.util.randomUUID
@@ -46,11 +47,13 @@ import kotlin.time.toDuration
 @Composable
 fun ConversationList(
     viewModel: ConversationListViewModel = koinViewModel(),
+    chatState: ChatState,
     onMenuClicked: () -> Unit,
     navigateToConversation: (String) -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ConversationList(
+        chatState = chatState,
         state = state,
         onMenuClicked = onMenuClicked,
         navigateToConversation = navigateToConversation
@@ -60,15 +63,22 @@ fun ConversationList(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun ConversationList(
+    chatState: ChatState,
     state: ConversationListState,
     onMenuClicked: () -> Unit,
     navigateToConversation: (String) -> Unit
 ) = Surface(
     modifier = Modifier
         .fillMaxSize()
-        .safeContentPadding()
 ) {
     Column {
+        val loadingState = remember(chatState, state) {
+            when (chatState) {
+                ChatState.Connected -> state.loading
+                is ChatState.Error -> ConversationListState.LoadingState.Error
+                ChatState.Loading -> ConversationListState.LoadingState.Loading
+            }
+        }
         CenterAlignedTopAppBar(
             navigationIcon = {
                 IconButton(onClick = onMenuClicked) {
@@ -79,7 +89,7 @@ private fun ConversationList(
                 }
             },
             title = {
-                AnimatedContent(targetState = state.loading, label = "Loading anim") {
+                AnimatedContent(targetState = loadingState, label = "Loading anim") {
                     when (it) {
                         ConversationListState.LoadingState.Complete -> Text("F Chat")
                         ConversationListState.LoadingState.Loading -> Text("Connecting...")
@@ -185,6 +195,7 @@ fun ChatPreview() {
             },
             loading = ConversationListState.LoadingState.Complete
         ),
+        chatState = ChatState.Connected,
         onMenuClicked = { },
         navigateToConversation = { }
     )

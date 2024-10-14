@@ -9,7 +9,9 @@ import io.github.zidbrain.fchat.common.util.replaceAt
 import io.github.zidbrain.fchat.mvi.MVIViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import org.koin.android.annotation.KoinViewModel
 
+@KoinViewModel
 class ContactsViewModel(
     private val repository: ContactsRepository,
     private val userRepository: UserRepository

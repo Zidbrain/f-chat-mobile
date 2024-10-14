@@ -7,14 +7,14 @@ import io.github.zidbrain.ConversationWithMessages
 import io.github.zidbrain.Database
 import io.github.zidbrain.MessageEntity
 import io.github.zidbrain.ParticipantEntity
+import io.github.zidbrain.fchat.common.account.cryptography.CryptographyService
 import io.github.zidbrain.fchat.common.chat.repository.ChatMessage
 import io.github.zidbrain.fchat.common.chat.repository.Conversation
 import io.github.zidbrain.fchat.common.chat.repository.ConversationInfo
 import io.github.zidbrain.fchat.common.chat.repository.MessageStatus
+import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.user.model.User
 import io.github.zidbrain.fchat.common.user.repository.UserRepository
-import io.ktor.util.decodeBase64Bytes
-import io.ktor.util.encodeBase64
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -24,46 +24,61 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.datetime.Instant
+import org.koin.core.annotation.Single
 
-class ConversationDao(private val database: Database, private val userRepository: UserRepository) {
+@Single
+class ConversationDao(
+    private val database: Database,
+    private val userRepository: UserRepository,
+    private val cryptographyService: CryptographyService,
+    private val sessionRepository: SessionRepository
+) {
 
-    private data class ConversationDBModel(
+    private class ConversationDBModel(
         val id: String,
-        val symmetricKey: String,
+        val encryptedSymmetricKey: ByteArray,
         val name: String?
-    )
+    ) {
+        override fun equals(other: Any?): Boolean =
+            other is ConversationDBModel && other.id == id
+
+        override fun hashCode(): Int = id.hashCode()
+    }
 
     private suspend fun List<ConversationWithMessages>.toModel(): List<Conversation> =
         coroutineScope {
             groupBy {
                 ConversationDBModel(
                     id = it.id,
-                    symmetricKey = it.symmetricKey,
+                    encryptedSymmetricKey = it.encryptedSymmetricKey,
                     name = it.conversationName
                 )
             }.map { (model, it) ->
                 val participants = it.map { participant ->
                     async { userRepository.getUser(participant.participantId) }
                 }
-                val messages = it.mapNotNull { message ->
-                    message.messageId?.let {
-                        async {
-                            ChatMessage(
-                                id = it,
-                                sender = userRepository.getUser(message.messageSentBy!!),
-                                content = message.messageContent!!,
-                                sentAt = Instant.fromEpochMilliseconds(message.messageSentAt!!),
-                                status = message.messageStatus!!
-                            )
+                val messages = it.distinctBy { message -> message.messageId }
+                    .mapNotNull { message ->
+                        message.messageId?.let {
+                            async {
+                                ChatMessage(
+                                    id = it,
+                                    sender = userRepository.getUser(message.messageSentBy!!),
+                                    content = message.messageContent!!,
+                                    sentAt = Instant.fromEpochMilliseconds(message.messageSentAt!!),
+                                    status = message.messageStatus!!
+                                )
+                            }
                         }
                     }
-                }
 
+                val publicKey = cryptographyService.deviceKeyPair(sessionRepository.session.email)
+                val decryptedKey = publicKey.decrypt(model.encryptedSymmetricKey)
                 Conversation(
                     id = model.id,
                     name = model.name,
                     participants = participants.awaitAll(),
-                    symmetricKey = model.symmetricKey.decodeBase64Bytes(),
+                    symmetricKey = decryptedKey,
                     messages = messages.awaitAll()
                 )
             }
@@ -85,18 +100,18 @@ class ConversationDao(private val database: Database, private val userRepository
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    suspend fun getConversation(ownerId: String, id: String): Flow<Conversation?> =
+    fun getConversation(ownerId: String, id: String): Flow<Conversation?> =
         database.conversationsQueries.getConversationById(
             ownerId = ownerId,
             conversationId = id
         ).asFlow()
-            .distinctUntilChanged()
             .mapLatest {
                 it.executeAsList().toModel().singleOrNull()
             }
+            .distinctUntilChanged()
 
     suspend fun createOrGetConversation(
-        symmetricKey: ByteArray,
+        encryptedSymmetricKey: ByteArray,
         conversationId: String,
         ownerId: String,
         name: String?,
@@ -115,7 +130,7 @@ class ConversationDao(private val database: Database, private val userRepository
             ConversationEntity(
                 conversationId,
                 ownerId,
-                symmetricKey.encodeBase64(),
+                encryptedSymmetricKey,
                 name
             )
         )
@@ -123,16 +138,18 @@ class ConversationDao(private val database: Database, private val userRepository
             createParticipant(ParticipantEntity(user.id))
             addParticipantToConversation(ConversationParticipant(conversationId, user.id))
         }
+        val publicKey = cryptographyService.deviceKeyPair(sessionRepository.session.email)
+        val decryptedKey = publicKey.decrypt(encryptedSymmetricKey)
         return Conversation(
             id = conversationId,
             participants = members,
-            symmetricKey = symmetricKey,
+            symmetricKey = decryptedKey,
             name = name,
             messages = emptyList()
         )
     }
 
-    fun addMessage(conversationId: String, message: ChatMessage) =
+    fun addMessage(conversationId: String, externalId: String?, message: ChatMessage) =
         with(database.conversationsQueries) {
             addMessage(
                 MessageEntity(
@@ -141,7 +158,8 @@ class ConversationDao(private val database: Database, private val userRepository
                     conversationId = conversationId,
                     sentAt = message.sentAt.toEpochMilliseconds(),
                     sentBy = message.sender.id,
-                    status = message.status
+                    status = message.status,
+                    externalId = externalId
                 )
             )
         }
@@ -150,7 +168,19 @@ class ConversationDao(private val database: Database, private val userRepository
         database.conversationsQueries.clearMessagesForConversation(id)
     }
 
-    fun setMessageStatus(messageId: String, status: MessageStatus) {
-        database.conversationsQueries.setMessageStatus(status = status, id = messageId)
+    fun setMessageExternalIdAndStatus(
+        messageId: String,
+        status: MessageStatus,
+        externalId: String
+    ) = database.conversationsQueries.transaction {
+        database.conversationsQueries.setMessageStatus(status, messageId)
+        database.conversationsQueries.setMessageExternalId(externalId, messageId)
+    }
+
+    fun setMessageStatus(
+        messageId: String,
+        status: MessageStatus
+    ) {
+        database.conversationsQueries.setMessageStatus(status, messageId)
     }
 }

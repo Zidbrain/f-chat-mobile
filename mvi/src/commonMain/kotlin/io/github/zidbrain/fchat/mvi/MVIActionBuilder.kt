@@ -1,16 +1,16 @@
 package io.github.zidbrain.fchat.mvi
 
-import io.github.zidbrain.fchat.logError
 import kotlin.coroutines.cancellation.CancellationException
 
 @Suppress("UNCHECKED_CAST")
 class MVIActionBuilder<State : Any, Event> internal constructor(
     private val viewModel: MVIViewModel<*, State, Event>,
+    private val log: (tag: String, msg: String, throwable: Exception) -> Unit,
     internal val block: suspend MVIActionHandler<State, Event>.() -> Unit
 ) {
 
     private inline fun copy(crossinline block: suspend MVIActionHandler<State, Event>.() -> Unit) =
-        MVIActionBuilder(viewModel) {
+        MVIActionBuilder(viewModel, log) {
             block()
         }.also {
             it.cancelable = cancelable
@@ -23,12 +23,11 @@ class MVIActionBuilder<State : Any, Event> internal constructor(
         }
 
     fun catch(
-        log: (tag: String, msg: String, throwable: Throwable) -> Unit = ::logError,
-        handle: suspend MVIActionHandler<State, Event>.(Throwable) -> Unit
+        handle: suspend MVIActionHandler<State, Event>.(Exception) -> Unit
     ): MVIActionBuilder<State, Event> = copy {
         try {
             this.block()
-        } catch (t: Throwable) {
+        } catch (t: Exception) {
             if (t !is CancellationException) {
                 log(
                     viewModel::class.simpleName ?: "ViewModel",
@@ -37,7 +36,33 @@ class MVIActionBuilder<State : Any, Event> internal constructor(
                 )
                 handle(t)
             }
+            else throw t
         }
+    }
+
+    fun retry(
+        retries: Int = Int.MAX_VALUE,
+        shouldRetry: suspend MVIActionHandler<State, Event>.(Exception) -> Boolean
+    ) = copy {
+        do {
+            var count = 0
+            val retry = try {
+                this.block()
+                false
+            } catch (t: Exception) {
+                if (t is CancellationException)
+                    throw t
+                else {
+                    log(
+                        viewModel::class.simpleName ?: "ViewModel",
+                        "An error occurred when executing action $actionDebug",
+                        t
+                    )
+                    count++
+                    shouldRetry(t)
+                }
+            }
+        } while (retry && count < retries)
     }
 
     fun onErrorSet(state: (Throwable) -> State): MVIActionBuilder<State, Event> =

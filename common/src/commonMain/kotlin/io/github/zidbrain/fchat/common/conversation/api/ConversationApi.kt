@@ -5,6 +5,7 @@ import io.github.zidbrain.fchat.common.conversation.api.dto.CreateConversationRe
 import io.github.zidbrain.fchat.common.conversation.api.dto.GetActiveDevicesRequest
 import io.github.zidbrain.fchat.common.conversation.api.dto.GetActiveDevicesResponse
 import io.github.zidbrain.fchat.common.conversation.api.dto.GetConversationInfoResponse
+import io.github.zidbrain.fchat.common.di.ClientType
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -13,8 +14,15 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import org.koin.core.annotation.Named
+import org.koin.core.annotation.Single
 
-class ConversationApi(private val client: HttpClient) {
+@Single
+class ConversationApi(
+    
+    @Named(ClientType.AUTHORIZED)
+    private val client: HttpClient
+) {
     suspend fun getActiveDevices(request: GetActiveDevicesRequest): GetActiveDevicesResponse =
         client.post("chat/getActiveDevices") {
             contentType(ContentType.Application.Json)
@@ -28,7 +36,7 @@ class ConversationApi(private val client: HttpClient) {
         }.body()
 
     suspend fun getConversationInfo(id: String): GetConversationInfoResponse? =
-        client.get("chat/getConversationInfo?id=$id").let {
+        client.get("chat/getConversationInfo/$id").let {
             if (it.status == HttpStatusCode.NotFound) null
             else it.body()
         }

@@ -1,12 +1,16 @@
 @file:Suppress("OPT_IN_USAGE")
 
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlinxSerialization)
     alias(libs.plugins.app.cash.sqldelight)
     alias(libs.plugins.android.library)
+    alias(libs.plugins.ksp)
+}
+
+ksp {
+    arg("KOIN_DEFAULT_MODULE", "false")
 }
 
 android {
@@ -15,10 +19,7 @@ android {
 
     defaultConfig {
         minSdk = 24
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 }
 
@@ -34,16 +35,21 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
-    androidTarget {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_1_8)
-        }
-    }
+    androidTarget()
+    jvmToolchain(22)
     sourceSets {
         val androidMain by getting {
             dependencies {
                 implementation(libs.androidx.security.crypto)
                 implementation(libs.app.cash.sqldelight.android.driver)
+                implementation(libs.koin.android)
+            }
+        }
+        val androidInstrumentedTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.androidx.test.core)
+                implementation(libs.androidx.test.runner)
             }
         }
         val commonMain by getting {
@@ -54,11 +60,17 @@ kotlin {
                 implementation(libs.ktor.client.websockets)
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.app.cash.sqldelight.coroutines)
+
+                implementation(project.dependencies.platform(libs.koin.bom))
+                implementation(libs.koin.core)
+                api(libs.koin.annotations)
             }
         }
     }
+}
 
-    dependencies {
-        api(project(":mvi"))
-    }
+dependencies {
+    api(project(":mvi"))
+    add("kspCommonMainMetadata", libs.koin.ksp.compiler)
+    add("kspAndroid", libs.koin.ksp.compiler)
 }

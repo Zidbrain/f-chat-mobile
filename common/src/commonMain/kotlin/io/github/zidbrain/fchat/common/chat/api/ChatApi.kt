@@ -1,20 +1,35 @@
 package io.github.zidbrain.fchat.common.chat.api
 
-import io.github.zidbrain.fchat.common.conversation.api.dto.WebSocketMessageIn
-import io.github.zidbrain.fchat.common.conversation.api.dto.WebSocketMessageOut
+import io.github.zidbrain.fchat.common.conversation.api.dto.ChatSocketMessageIn
+import io.github.zidbrain.fchat.common.conversation.api.dto.ChatSocketMessageInContent
+import io.github.zidbrain.fchat.common.conversation.api.dto.ChatSocketMessageOut
+import io.github.zidbrain.fchat.common.conversation.api.dto.ChatSocketMessageOutContent
+import io.github.zidbrain.fchat.common.di.ClientType
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
+import io.github.zidbrain.fchat.common.util.randomUUID
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.receiveDeserialized
 import io.ktor.client.plugins.websocket.sendSerialized
 import io.ktor.client.plugins.websocket.webSocketSession
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
+import io.ktor.http.URLBuilder
+import io.ktor.http.encodedPath
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
+import org.koin.core.annotation.Named
+import org.koin.core.annotation.Single
+import kotlin.coroutines.resumeWithException
+import kotlin.time.Duration.Companion.seconds
 
+@Single
 class ChatApi(
+    @Named(ClientType.UNAUTHORIZED)
     private val client: HttpClient,
+    @Named(ClientType.HOST_URL)
+    private val hostUrlString: String,
     private val sessionRepository: SessionRepository
 ) {
     private suspend fun DefaultClientWebSocketSession.authenticate(accessToken: String) {
@@ -23,26 +38,75 @@ class ChatApi(
 
     private var session: DefaultClientWebSocketSession? = null
 
-    suspend fun send(payload: WebSocketMessageOut.RequestPayload) = withContext(Dispatchers.IO) {
-        session?.let {
-            it.sendSerialized(WebSocketMessageOut.Request(payload))
-            it.receiveDeserialized<WebSocketMessageIn.Ok>()
-        } ?: throw IllegalStateException("Session died")
-    }
+    private val requests =
+        mutableMapOf<String, CancellableContinuation<ChatSocketMessageInContent.Control>>()
 
-    suspend fun connect(messageHandler: suspend (WebSocketMessageIn.ContentPayload) -> Unit) {
-        val originalContext = currentCoroutineContext()
-        withContext(Dispatchers.IO) {
-            session = client.webSocketSession("chat").apply {
-                authenticate(sessionRepository.accessToken)
-                launch {
-                    while (true) {
-                        val content = receiveDeserialized<WebSocketMessageIn.Content>()
-                        withContext(originalContext) { messageHandler(content.payload) }
-                        sendSerialized(WebSocketMessageOut.Ok)
+    suspend fun send(content: ChatSocketMessageOutContent): ChatSocketMessageInContent.Control =
+        withTimeout(5.seconds) {
+            val request = ChatSocketMessageOut(
+                socketMessageId = randomUUID(),
+                content = content
+            )
+            session?.sendSerialized(request) ?: throw IllegalStateException("Session died")
+
+            suspendCancellableCoroutine { continuation ->
+                continuation.invokeOnCancellation {
+                    requests.remove(request.socketMessageId)
+                }
+                requests[request.socketMessageId] = continuation
+            }
+        }
+
+    private suspend fun DefaultClientWebSocketSession.handleConnection(
+        messageHandler: suspend (ChatSocketMessageInContent.Payload) -> ChatSocketMessageOutContent.Control
+    ): Nothing {
+        while (true) {
+            val message = receiveDeserialized<ChatSocketMessageIn>()
+            when (val content = message.content) {
+                is ChatSocketMessageInContent.Control -> requests[message.socketMessageId]?.let {
+                    it.resumeWith(Result.success(content))
+                    requests.remove(message.socketMessageId)
+                } ?: throw IllegalStateException("Got response for unknown request")
+
+                is ChatSocketMessageInContent.Payload -> launch {
+                    withTimeout(5.seconds) {
+                        val result = messageHandler(content)
+                        val response = ChatSocketMessageOut(
+                            socketMessageId = message.socketMessageId,
+                            content = result
+                        )
+
+                        sendSerialized(response)
                     }
                 }
             }
+        }
+    }
+
+    suspend fun connect(
+        onConnectionEstablished: () -> Unit,
+        messageHandler: suspend (ChatSocketMessageInContent.Payload) -> ChatSocketMessageOutContent.Control
+    ): Nothing {
+        val url = URLBuilder("${hostUrlString}/chat")
+        session = client.webSocketSession(host = url.host, port = url.port, path = url.encodedPath)
+            .apply {
+                authenticate(sessionRepository.accessToken)
+            }
+
+        onConnectionEstablished()
+        try {
+            session!!.handleConnection(messageHandler)
+        } catch (ex: Exception) {
+            if (ex is CancellationException) {
+                requests.forEach { (_, cont) -> cont.cancel(ex.cause) }
+                requests.clear()
+                throw ex.cause ?: ex
+            }
+            requests.forEach { (_, cont) -> cont.resumeWithException(ex) }
+            requests.clear()
+            throw ex
+        } finally {
+            session = null
         }
     }
 }

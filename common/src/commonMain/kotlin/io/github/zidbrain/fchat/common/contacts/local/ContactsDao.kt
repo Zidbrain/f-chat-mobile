@@ -6,8 +6,12 @@ import io.github.zidbrain.ContactEntity
 import io.github.zidbrain.Database
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import org.koin.core.annotation.Single
 
-class ContactsDao(private val database: Database) {
+@Single
+class ContactsDao(
+     private val database: Database
+) {
 
     fun getContactsForUserAsFlow(ownerId: String): Flow<List<ContactEntity>> =
         database.contactsQueries.selectAll(ownerId).asFlow().mapToList(Dispatchers.IO)

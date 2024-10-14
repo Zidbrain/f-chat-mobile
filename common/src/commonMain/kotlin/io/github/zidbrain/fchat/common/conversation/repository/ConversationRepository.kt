@@ -16,23 +16,23 @@ import io.github.zidbrain.fchat.common.user.repository.UserRepository
 import io.github.zidbrain.fchat.common.util.randomUUID
 import io.ktor.util.decodeBase64Bytes
 import io.ktor.util.encodeBase64
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import org.koin.core.annotation.Single
 
+@Single
 class ConversationRepository(
     private val api: ConversationApi,
     private val cryptographyService: CryptographyService,
     private val conversationDao: ConversationDao,
     private val repository: SessionRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val clock: Clock
 ) {
 
     private var _conversations: Flow<Map<String, ConversationInfo>>? = null
@@ -48,14 +48,12 @@ class ConversationRepository(
             }
     }
 
-    suspend fun getConversation(conversationId: String): Flow<Conversation?> {
+    suspend fun getConversationInfo(conversationId: String): ConversationInfo? =
+        getConversations().first()[conversationId]
+
+    fun getConversation(conversationId: String): Flow<Conversation?> {
         val ownerId = repository.session.userId
         return conversationDao.getConversation(ownerId, conversationId)
-    }
-
-    suspend fun findDirectMessageConversation(withUserId: String): ConversationInfo? {
-        val conversations = (_conversations ?: getConversations()).first()
-        return conversations.values.find { it.participants.size == 1 && it.participants.first().id == withUserId }
     }
 
     /**
@@ -77,11 +75,12 @@ class ConversationRepository(
 
         val createConversationRequest = CreateConversationRequest(members)
         val conversation = api.createConversation(createConversationRequest)
+        val currentDevicePublicKey = cryptographyService.deviceKeyPair(repository.session.email)
         return conversationDao.createOrGetConversation(
-            symmetricKey = key.encoded,
+            encryptedSymmetricKey = currentDevicePublicKey.encrypt(key.encoded),
             conversationId = conversation.conversationId,
             ownerId = repository.session.userId,
-            members = users,
+            members = users + userRepository.currentUser,
             name = null
         )
     }
@@ -89,36 +88,59 @@ class ConversationRepository(
     /**
      * Adds message to conversation with [conversationId] to the local database.
      */
-    suspend fun addMessage(conversationId: String, message: (ConversationInfo) -> ChatMessage) {
-        val conversation = (_conversations ?: getConversations()).first()[conversationId]
-            ?: throw IllegalStateException("No conversation in db. Must receive create conversation message first. TODO")
-        conversationDao.addMessage(conversationId, message(conversation))
+    suspend fun addMessage(
+        conversationId: String,
+        externalMessageId: String?,
+        message: (ConversationInfo) -> ChatMessage
+    ) {
+        val conversation = getConversationInfo(conversationId)
+            ?: requestConversationInfo(conversationId)
+            ?: throw IllegalStateException("Cannot find conversation info for conversation id = $conversationId")
+        conversationDao.addMessage(conversationId, externalMessageId, message(conversation))
+    }
+
+    private suspend fun requestConversationInfo(conversationId: String): ConversationInfo? {
+        val response = api.getConversationInfo(conversationId)
+        val conversation = response?.toModel() ?: return null
+
+        val result = conversationDao.createOrGetConversation(
+            encryptedSymmetricKey = conversation.symmetricKey,
+            conversationId = conversation.id,
+            ownerId = repository.session.userId,
+            name = null,
+            members = conversation.participants
+        )
+        return result.toInfo()
     }
 
     /**
-     * Creates the message with specified [content] and adds it to conversation with [conversationId] in the local database.
+     * Creates a message with the specified [content] and adds it to conversation with [conversationId] in the local database.
      *
      * Assuming that sender is the current user.
+     *
+     * @return Id of the new message
      */
-    suspend fun createMessageIn(conversationId: String, content: String) {
+    suspend fun createMessageIn(conversationId: String, content: String): String {
         val message = ChatMessage(
             id = randomUUID(),
-            sentAt = Clock.System.now(),
+            sentAt = clock.now(),
             sender = userRepository.currentUser,
             content = content,
             status = MessageStatus.Initial
         )
-        addMessage(conversationId) { message }
-        // Testing
-        GlobalScope.launch {
-            delay(3000L)
-            setMessageStatus(message.id, MessageStatus.Delivered)
-            delay(3000L)
-            setMessageStatus(message.id, MessageStatus.Read)
-        }
+        addMessage(conversationId, null) { message }
+        return message.id
     }
 
-    private fun setMessageStatus(messageId: String, status: MessageStatus) {
+    fun setMessageExternalIdAndDeliveredStatus(messageId: String, externalMessageId: String) {
+        conversationDao.setMessageExternalIdAndStatus(
+            messageId,
+            MessageStatus.Delivered,
+            externalMessageId
+        )
+    }
+
+    fun setMessageStatus(messageId: String, status: MessageStatus) {
         conversationDao.setMessageStatus(messageId, status)
     }
 

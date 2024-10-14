@@ -8,12 +8,14 @@ import io.github.zidbrain.fchat.common.login.api.LoginApi
 import io.github.zidbrain.fchat.common.login.api.dto.GetAccessTokenRequestDto
 import io.github.zidbrain.fchat.common.login.api.dto.GetRefreshTokenRequestDto
 import io.ktor.util.encodeBase64
+import org.koin.core.annotation.Single
 
+@Single
 class LoginRepository(
     private val loginApi: LoginApi,
     private val cryptographyService: CryptographyService,
     private val sessionRepository: SessionRepository,
-    private val ssoStorage: SsoStorage
+     private val ssoStorage: SsoStorage
 ) {
 
     val authorizedSession

@@ -35,4 +35,4 @@ actual fun ByteArray.encryptRSA(publicKey: ByteArray): ByteArray {
 
 fun KeyPair.toModel() = RSAKeyPair(public, private)
 
-private const val TRANSFORMATION = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
+private const val TRANSFORMATION = "RSA/ECB/PKCS1Padding"
