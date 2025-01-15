@@ -1,7 +1,7 @@
 package io.github.zidbrain.fchat.common.contacts.model
 
 import io.github.zidbrain.ContactEntity
-import io.github.zidbrain.fchat.common.contacts.api.dto.ContactDto
+import io.github.zidbrain.fchat.common.contacts.api.dto.UserDto
 
 data class Contact(
     val id: String,
@@ -9,7 +9,7 @@ data class Contact(
     val displayName: String
 )
 
-fun ContactDto.toModel() = Contact(
+fun UserDto.toModel() = Contact(
     id = id,
     email = email,
     displayName = displayName

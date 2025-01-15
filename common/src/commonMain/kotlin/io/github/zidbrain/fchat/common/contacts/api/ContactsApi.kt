@@ -2,6 +2,7 @@ package io.github.zidbrain.fchat.common.contacts.api
 
 import io.github.zidbrain.fchat.common.contacts.api.dto.GetContactsResponseDto
 import io.github.zidbrain.fchat.common.contacts.api.dto.RemoveContactsRequestDto
+import io.github.zidbrain.fchat.common.di.ClientType
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -10,17 +11,24 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import org.koin.core.annotation.Named
+import org.koin.core.annotation.Single
 
-class ContactsApi(private val client: HttpClient) {
+@Single
+class ContactsApi(
+    @Named(ClientType.AUTHORIZED)
+    private val client: HttpClient
+) {
 
     suspend fun getContacts(): GetContactsResponseDto = client.get("user/contacts") {
         contentType(ContentType.Application.Json)
     }.body()
 
-    suspend fun searchUsers(searchString: String): GetContactsResponseDto = client.get("user/search") {
-        parameter("searchString", searchString)
-        contentType(ContentType.Application.Json)
-    }.body()
+    suspend fun searchUsers(searchString: String): GetContactsResponseDto =
+        client.get("user/search") {
+            parameter("searchString", searchString)
+            contentType(ContentType.Application.Json)
+        }.body()
 
     suspend fun addContact(id: String) {
         client.post("user/contacts/add") {

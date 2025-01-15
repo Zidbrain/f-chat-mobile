@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import io.github.zidbrain.fchat.common.host.repository.UserSessionInfo
+import org.koin.core.annotation.Single
 
+@Single
 class AndroidEncryptedStorage(context: Context) : EncryptedStorage {
 
     private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
@@ -21,12 +23,14 @@ class AndroidEncryptedStorage(context: Context) : EncryptedStorage {
         get() {
             val token = prefs.getString(REFRESH_TOKEN, null) ?: return null
             val id = prefs.getString(USER_ID, null) ?: return null
-            return UserSessionInfo(token, id)
+            val email = prefs.getString(EMAIL, null) ?: return null
+            return UserSessionInfo(token, id, email)
         }
         set(value) {
             editor
                 .putString(REFRESH_TOKEN, value?.refreshToken)
                 .putString(USER_ID, value?.userId)
+                .putString(EMAIL, value?.email)
                 .commit()
         }
 
@@ -34,5 +38,6 @@ class AndroidEncryptedStorage(context: Context) : EncryptedStorage {
         const val FILE_NAME = "prefs_encrypted"
         const val REFRESH_TOKEN = "refreshToken"
         const val USER_ID = "userId"
+        const val EMAIL = "email"
     }
 }

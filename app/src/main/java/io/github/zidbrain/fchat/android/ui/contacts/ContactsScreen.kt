@@ -4,18 +4,15 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,8 +28,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -54,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.zidbrain.fchat.android.R
 import io.github.zidbrain.fchat.android.ui.common.ErrorHandler
+import io.github.zidbrain.fchat.android.ui.common.RoundedIcon
 import io.github.zidbrain.fchat.android.ui.common.SelectableListItem
 import io.github.zidbrain.fchat.android.ui.main.LocalSnackbarHostState
 import io.github.zidbrain.fchat.common.contacts.model.Contact
@@ -67,6 +63,7 @@ import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.TitleSta
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.TopBarState
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsViewModel
 import io.github.zidbrain.fchat.common.contacts.viewmodel.toItemState
+import io.github.zidbrain.fchat.common.nav.ConversationNavigationInfo
 import io.github.zidbrain.fchat.util.CollectorEffect
 import io.github.zidbrain.fchat.util.rememberCallbackState
 import io.github.zidbrain.fchat.util.takeIfType
@@ -75,7 +72,8 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun ContactsPage(
     viewModel: ContactsViewModel = koinViewModel(),
-    onBackPressed: () -> Unit
+    onBackPressed: () -> Unit,
+    navigateToConversation: (ConversationNavigationInfo) -> Unit
 ) {
     BackHandler(onBack = onBackPressed)
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -92,6 +90,8 @@ fun ContactsPage(
                 snackbarHost.showSnackbar(
                     message = "${it.displayName} has been added to your contact book"
                 )
+
+            is ContactsEvent.NavigateToConversation -> navigateToConversation(it.info)
         }
     }
 }
@@ -102,7 +102,9 @@ private fun ContactsScreen(
     state: ContactsState,
     onBackPressed: () -> Unit,
     sendAction: (ContactsAction) -> Unit
-) = Surface {
+) = Surface(
+    modifier = Modifier.fillMaxSize()
+) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Column(
         modifier = Modifier
@@ -245,11 +247,9 @@ private fun Contact(modifier: Modifier = Modifier, selected: Boolean, contact: C
         modifier = modifier,
         selected = selected
     ) {
-        Box(
-            modifier = Modifier
-                .padding(start = 10.dp)
-                .size(50.dp)
-                .background(color = Color.LightGray, shape = CircleShape)
+        RoundedIcon(
+            iconUrl = "icon",
+            modifier = Modifier.padding(start = 10.dp)
         )
         Column {
             Text(
@@ -272,16 +272,6 @@ private fun ContactsContent(
     content: Content,
     sendAction: (ContactsAction) -> Unit
 ) {
-    val refreshState = rememberPullToRefreshState()
-    if (refreshState.isRefreshing)
-        LaunchedEffect(true) {
-            sendAction(ContactsAction.Refresh)
-        }
-    if (!content.isRefreshing)
-        LaunchedEffect(false) {
-            refreshState.endRefresh()
-        }
-
     content.removeDialog?.let { alertState ->
         fun result(accept: Boolean) {
             sendAction(ContactsAction.RemoveContactsDialogResult(accept))
@@ -326,10 +316,10 @@ private fun ContactsContent(
         )
     }
 
-    Box(
-        modifier = Modifier
-            .nestedScroll(refreshState.nestedScrollConnection)
-            .clipToBounds()
+    PullToRefreshBox(
+        isRefreshing = content.isRefreshing,
+        onRefresh = { sendAction(ContactsAction.Refresh) },
+        modifier = Modifier.clipToBounds()
     ) {
         LazyColumn(
             modifier = Modifier
@@ -350,7 +340,6 @@ private fun ContactsContent(
                 }
             }
         }
-        PullToRefreshContainer(state = refreshState, modifier = Modifier.align(Alignment.TopCenter))
     }
 }
 
@@ -367,7 +356,7 @@ private fun LazyListScope.contactList(
     ) { i, (it, selected) ->
         Column(
             modifier = Modifier
-                .animateItemPlacement()
+                .animateItem()
                 .fillMaxWidth()
         ) {
             Contact(
@@ -378,10 +367,7 @@ private fun LazyListScope.contactList(
                                 sendAction(ContactsAction.SelectContact(i))
                         },
                         onClick = {
-                            if (topBarState.title is TitleState.Searching)
-                                sendAction(
-                                    ContactsAction.AddContact(it.id, it.displayName)
-                                )
+                            sendAction(ContactsAction.ClickContact(it.id))
                         }
                     ),
                 selected = selected,

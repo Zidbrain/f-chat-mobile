@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "f-chat-mobile"
 include(":app")
 include(":common")
+include(":mvi")

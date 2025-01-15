@@ -2,12 +2,20 @@ package io.github.zidbrain.fchat.common.contacts.viewmodel
 
 import io.github.zidbrain.fchat.common.contacts.model.Contact
 import io.github.zidbrain.fchat.common.contacts.repository.ContactsRepository
+import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.TitleState
+import io.github.zidbrain.fchat.common.nav.ConversationNavigationInfo
+import io.github.zidbrain.fchat.common.user.repository.UserRepository
 import io.github.zidbrain.fchat.common.util.replaceAt
 import io.github.zidbrain.fchat.mvi.MVIViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import org.koin.android.annotation.KoinViewModel
 
-class ContactsViewModel(private val repository: ContactsRepository) :
+@KoinViewModel
+class ContactsViewModel(
+    private val repository: ContactsRepository,
+    private val userRepository: UserRepository
+) :
     MVIViewModel<ContactsAction, ContactsState, ContactsEvent>(getInitState(repository)) {
 
     companion object {
@@ -73,7 +81,7 @@ class ContactsViewModel(private val repository: ContactsRepository) :
 
             is ContactsAction.SearchInput -> requireState<ContactsState.Content> {
                 val titleState =
-                    state.topBarState.title as ContactsState.TitleState.Searching
+                    state.topBarState.title as TitleState.Searching
                 setState {
                     copy(
                         topBarState = ContactsState.TopBarState.search(
@@ -94,16 +102,29 @@ class ContactsViewModel(private val repository: ContactsRepository) :
                 )
             }
 
-            is ContactsAction.AddContact -> {
+            is ContactsAction.ClickContact -> requireState<ContactsState.Content> {
+                val prevState = state
                 setState(ContactsState.Loading)
-                repository.addContact(action.id)
-                raiseEvent(ContactsEvent.ContactAdded(action.displayName))
+                if (prevState.topBarState.title is TitleState.Searching) {
+                    val contact = repository.addContact(action.id)
+                    raiseEvent(ContactsEvent.ContactAdded(contact.displayName))
+                    return@requireState
+                }
+
+                val user = userRepository.getUser(id = action.id)
+                setState(prevState)
+                // TODO: Conversation with multiple users
+                raiseEvent(
+                    ContactsEvent.NavigateToConversation(
+                        ConversationNavigationInfo.NewDirectMessageConversation(user.id)
+                    )
+                )
             }
 
             is ContactsAction.SelectContact -> requireState<ContactsState.Content> {
                 val newContacts =
                     state.contacts.replaceAt(action.index) { it.copy(selected = true) }
-                val newTopBarState = if (state.topBarState.title is ContactsState.TitleState.Searching)
+                val newTopBarState = if (state.topBarState.title is TitleState.Searching)
                     state.topBarState.copy(removeContactAction = ContactsState.ActionButtonState())
                 else {
                     val amountSelected = newContacts.count { it.selected }
@@ -212,7 +233,7 @@ sealed class ContactsAction {
     data object ClickCancel : ContactsAction()
     data object DiscoverContacts : ContactsAction()
     data class SearchInput(val query: String) : ContactsAction()
-    data class AddContact(val id: String, val displayName: String) : ContactsAction()
+    data class ClickContact(val id: String) : ContactsAction()
     data object Refresh : ContactsAction()
 
     data class SelectContact(val index: Int) : ContactsAction()
@@ -222,6 +243,7 @@ sealed class ContactsAction {
 
 sealed class ContactsEvent {
     data class ContactAdded(val displayName: String) : ContactsEvent()
+    data class NavigateToConversation(val info: ConversationNavigationInfo) : ContactsEvent()
 }
 
 fun List<Contact>.toItemState() = map {

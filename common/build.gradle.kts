@@ -1,30 +1,25 @@
 @file:Suppress("OPT_IN_USAGE")
 
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlinxSerialization)
     alias(libs.plugins.app.cash.sqldelight)
-    id("com.android.library")
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.ksp)
+}
+
+ksp {
+    arg("KOIN_DEFAULT_MODULE", "false")
 }
 
 android {
     namespace = "io.github.zidbrain.fchat.common"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 24
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-
-        isCoreLibraryDesugaringEnabled = true
-    }
-    dependencies {
-        coreLibraryDesugaring(libs.desugar.jdk.libs)
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 }
 
@@ -40,28 +35,42 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
-    androidTarget {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_1_8)
-        }
-    }
+    androidTarget()
+    jvmToolchain(22)
     sourceSets {
         val androidMain by getting {
             dependencies {
                 implementation(libs.androidx.security.crypto)
-                implementation(libs.androidx.lifecycle.viewmodel)
                 implementation(libs.app.cash.sqldelight.android.driver)
+                implementation(libs.koin.android)
+            }
+        }
+        val androidInstrumentedTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.androidx.test.core)
+                implementation(libs.androidx.test.runner)
             }
         }
         val commonMain by getting {
             dependencies {
-                implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization)
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.websockets)
-                implementation(libs.ktor.client.serialization.json)
+                implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.app.cash.sqldelight.coroutines)
+
+                implementation(project.dependencies.platform(libs.koin.bom))
+                implementation(libs.koin.core)
+                api(libs.koin.annotations)
             }
         }
     }
+}
+
+dependencies {
+    api(project(":mvi"))
+    add("kspCommonMainMetadata", libs.koin.ksp.compiler)
+    add("kspAndroid", libs.koin.ksp.compiler)
 }

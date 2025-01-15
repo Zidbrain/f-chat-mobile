@@ -6,26 +6,30 @@ import io.github.zidbrain.ContactEntity
 import io.github.zidbrain.Database
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import org.koin.core.annotation.Single
 
-class ContactsDao(private val database: Database) {
+@Single
+class ContactsDao(
+     private val database: Database
+) {
 
     fun getContactsForUserAsFlow(ownerId: String): Flow<List<ContactEntity>> =
-        database.contactEntityQueries.selectAll(ownerId).asFlow().mapToList(Dispatchers.IO)
+        database.contactsQueries.selectAll(ownerId).asFlow().mapToList(Dispatchers.IO)
 
     fun getContactsForUser(ownerId: String): List<ContactEntity> =
-        database.contactEntityQueries.selectAll(ownerId).executeAsList()
+        database.contactsQueries.selectAll(ownerId).executeAsList()
 
     fun replaceContacts(ownerId: String, contacts: List<ContactEntity>) =
-        database.contactEntityQueries.transaction {
-            database.contactEntityQueries.clear(ownerId)
+        database.contactsQueries.transaction {
+            database.contactsQueries.clear(ownerId)
             contacts.forEach {
-                database.contactEntityQueries.insert(it)
+                database.contactsQueries.insert(it)
             }
         }
 
     fun searchContacts(ownerId: String, name: String) =
-        database.contactEntityQueries.searchContacts(ownerId, name).executeAsList()
+        database.contactsQueries.searchContacts(ownerId, name).executeAsList()
 
     fun removeWithIds(ownerId: String, ids: List<String>) =
-        database.contactEntityQueries.removeWithIds(ownerId, ids)
+        database.contactsQueries.removeWithIds(ownerId, ids)
 }

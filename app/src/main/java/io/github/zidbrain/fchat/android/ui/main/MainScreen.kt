@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -21,29 +22,32 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.zidbrain.fchat.android.R
-import io.github.zidbrain.fchat.android.ui.chat.ChatScreen
 import io.github.zidbrain.fchat.android.ui.contacts.ContactsPage
+import io.github.zidbrain.fchat.android.ui.conversation.ConversationList
+import io.github.zidbrain.fchat.common.chat.viewmodel.ChatState
+import io.github.zidbrain.fchat.common.chat.viewmodel.ChatViewModel
 import io.github.zidbrain.fchat.common.main.MainAction
 import io.github.zidbrain.fchat.common.main.MainEvent
 import io.github.zidbrain.fchat.common.main.MainViewModel
+import io.github.zidbrain.fchat.common.nav.ConversationNavigationInfo
 import io.github.zidbrain.fchat.util.CollectorEffect
 import io.github.zidbrain.fchat.util.showError
 import kotlinx.coroutines.launch
@@ -54,24 +58,32 @@ val LocalSnackbarHostState = staticCompositionLocalOf { SnackbarHostState() }
 @Composable
 fun MainScreen(
     viewModel: MainViewModel = koinViewModel(),
-    startPage: MainScreenPage = MainScreenPage.Chat
+    chatViewModel: ChatViewModel = koinViewModel(),
+    startPage: MainScreenPage = MainScreenPage.Chat,
+    onNavigateToConversation: (ConversationNavigationInfo) -> Unit
 ) {
     val snackbarHostState = LocalSnackbarHostState.current
     CollectorEffect(flow = viewModel.events) {
         when (it) {
-            is MainEvent.Error -> snackbarHostState.showError(it.cause)
+            is MainEvent.Error -> snackbarHostState.showError()
         }
     }
+
+    val chatState by chatViewModel.state.collectAsStateWithLifecycle()
     MainScreenMenu(
+        chatState = chatState,
         startPage = startPage,
-        onLogout = { viewModel.sendAction(MainAction.Logout) }
+        onLogout = { viewModel.sendAction(MainAction.Logout) },
+        onNavigateToConversation = onNavigateToConversation
     )
 }
 
 @Composable
 private fun MainScreenMenu(
     startPage: MainScreenPage = MainScreenPage.Chat,
-    onLogout: () -> Unit
+    chatState: ChatState,
+    onLogout: () -> Unit,
+    onNavigateToConversation: (ConversationNavigationInfo) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     ModalNavigationDrawer(
@@ -99,7 +111,12 @@ private fun MainScreenMenu(
         },
         gesturesEnabled = drawerState.isOpen
     ) {
-        MainScreenContent(startPage = startPage, drawerState = drawerState)
+        MainScreenContent(
+            chatState = chatState,
+            startPage = startPage,
+            drawerState = drawerState,
+            onNavigateToConversation = onNavigateToConversation
+        )
     }
 }
 
@@ -107,24 +124,26 @@ private fun MainScreenMenu(
 private fun MainScreenContent(
     startPage: MainScreenPage,
     drawerState: DrawerState,
+    chatState: ChatState,
     navController: NavHostController = rememberNavController(),
-    page: @Composable (MainScreenPage) -> Unit = {
-        MainScreenPages(page = it, drawerState = drawerState, navController = navController)
-    }
+    onNavigateToConversation: (ConversationNavigationInfo) -> Unit,
 ) {
     val pages = remember { MainScreenPage.entries }
-    var selected by remember { mutableStateOf(startPage) }
+    val currentBackStack by navController.currentBackStackEntryAsState()
+    val selected =
+        currentBackStack?.let { MainScreenPage.valueOf(it.destination.route!!) } ?: startPage
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
             MainScreenNavigationBar(
                 pages = pages,
                 selected = selected,
-                onPageSelected = { selected = it }
+                onPageSelected = { navController.navigate(it.name) }
             )
         },
         snackbarHost = {
             SnackbarHost(hostState = LocalSnackbarHostState.current)
-        }
+        },
     ) { paddingValues ->
         NavHost(
             modifier = Modifier.padding(paddingValues),
@@ -137,18 +156,15 @@ private fun MainScreenContent(
         ) {
             pages.forEach { page ->
                 composable(page.name) {
-                    page(page)
+                    MainScreenPages(
+                        chatState = chatState,
+                        page = page,
+                        drawerState = drawerState,
+                        navController = navController,
+                        navigateToConversation = onNavigateToConversation
+                    )
                 }
             }
-        }
-
-        LaunchedEffect(Unit) {
-            navController.currentBackStackEntryFlow.collect {
-                selected = MainScreenPage.valueOf(it.destination.route!!)
-            }
-        }
-        LaunchedEffect(selected) {
-            navController.navigate(selected.name)
         }
     }
 }
@@ -180,19 +196,35 @@ private fun MainScreenNavigationBar(
 private fun MainScreenPages(
     navController: NavController,
     page: MainScreenPage,
-    drawerState: DrawerState
+    drawerState: DrawerState,
+    chatState: ChatState,
+    navigateToConversation: (ConversationNavigationInfo) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     when (page) {
-        MainScreenPage.Chat -> ChatScreen(onMenuClicked = {
-            scope.launch {
-                drawerState.open()
+        MainScreenPage.Chat -> ConversationList(
+            chatState = chatState,
+            onMenuClicked = {
+                scope.launch {
+                    drawerState.open()
+                }
+            },
+            navigateToConversation = {
+                navigateToConversation(
+                    ConversationNavigationInfo.ConversationId(it)
+                )
             }
-        })
+        )
 
-        MainScreenPage.Contacts -> ContactsPage(onBackPressed = {
-            navController.popBackStack()
-        })
+        MainScreenPage.Contacts -> ContactsPage(
+            onBackPressed = {
+                navController.popBackStack()
+            },
+            navigateToConversation = {
+                navController.navigate(MainScreenPage.Chat.name)
+                navigateToConversation(it)
+            }
+        )
     }
 }
 
@@ -223,7 +255,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.exitTransitionForP
 @Composable
 @Preview
 private fun MainScreenPreview() {
-    MainScreenMenu {
+    MainScreenMenu(chatState = ChatState.Connected, onLogout = { }) {
 
     }
 }

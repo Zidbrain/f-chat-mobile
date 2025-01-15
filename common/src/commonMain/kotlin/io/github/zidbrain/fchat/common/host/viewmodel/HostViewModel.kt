@@ -4,7 +4,9 @@ import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.host.repository.UserSessionState
 import io.github.zidbrain.fchat.mvi.MVIViewModel
 import kotlinx.coroutines.flow.map
+import org.koin.android.annotation.KoinViewModel
 
+@KoinViewModel
 class HostViewModel(
     private val sessionRepository: SessionRepository
 ) :

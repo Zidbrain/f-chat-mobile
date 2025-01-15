@@ -4,7 +4,9 @@ import io.github.zidbrain.fchat.common.account.storage.EncryptedStorage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import org.koin.core.annotation.Single
 
+@Single
 class SessionRepository(
     private val encryptedStorage: EncryptedStorage
 ) {
@@ -21,8 +23,11 @@ class SessionRepository(
     val session: UserSessionInfo
         get() = (_state.value as UserSessionState.ActiveSession).userSessionInfo
 
-    fun createSession(refreshToken: String, userId: String) {
-        val session = UserSessionInfo(refreshToken, userId)
+    val accessToken: String
+        get() = (_state.value as UserSessionState.ActiveSession.Authorized).accessToken
+
+    fun createSession(refreshToken: String, userId: String, email: String) {
+        val session = UserSessionInfo(refreshToken, userId, email)
         _state.update {
             UserSessionState.ActiveSession.Unauthorized(session)
         }
@@ -45,7 +50,8 @@ class SessionRepository(
 
 data class UserSessionInfo(
     val refreshToken: String,
-    val userId: String
+    val userId: String,
+    val email: String
 )
 
 sealed class UserSessionState {

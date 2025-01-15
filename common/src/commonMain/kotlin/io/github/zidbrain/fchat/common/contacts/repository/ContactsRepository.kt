@@ -10,14 +10,18 @@ import io.github.zidbrain.fchat.common.contacts.model.toModel
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapLatest
+import org.koin.core.annotation.Single
 
+@Single
 class ContactsRepository(
     private val api: ContactsApi,
     private val dao: ContactsDao,
     private val sessionRepository: SessionRepository
 ) {
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val contacts = dao.getContactsForUserAsFlow(sessionRepository.session.userId)
         .distinctUntilChanged()
         .mapLatest {
@@ -37,9 +41,10 @@ class ContactsRepository(
         return response.users.map { it.toModel() }
     }
 
-    suspend fun addContact(contactId: String) {
+    suspend fun addContact(contactId: String): Contact {
         api.addContact(contactId)
         fetchContacts()
+        return contacts.first().find { it.id == contactId }!!
     }
 
     suspend fun searchContacts(local: Boolean, query: String): List<Contact> {

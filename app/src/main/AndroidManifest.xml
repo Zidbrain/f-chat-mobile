@@ -12,11 +12,13 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.FChatMobile"
-        tools:targetApi="31">
+        android:enableOnBackInvokedCallback="true"
+        tools:targetApi="35">
         <activity
             android:name="io.github.zidbrain.fchat.android.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.FChatMobile">
+            android:theme="@style/Theme.FChatMobile"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

@@ -1,0 +1,13 @@
+CREATE TABLE userPublicKeyEntity (
+    key BLOB NOT NULL PRIMARY KEY,
+    userId TEXT NOT NULL
+);
+
+getPublicKeys:
+SELECT key FROM userPublicKeyEntity WHERE userId = :userId;
+
+clearPublicKeys:
+DELETE FROM userPublicKeyEntity;
+
+insertPublicKey:
+INSERT INTO userPublicKeyEntity(key, userId) VALUES ?;

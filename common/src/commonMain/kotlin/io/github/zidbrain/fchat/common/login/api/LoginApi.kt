@@ -1,5 +1,6 @@
 package io.github.zidbrain.fchat.common.login.api
 
+import io.github.zidbrain.fchat.common.di.ClientType
 import io.github.zidbrain.fchat.common.login.api.dto.GetAccessTokenRequestDto
 import io.github.zidbrain.fchat.common.login.api.dto.GetAccessTokenResponseDto
 import io.github.zidbrain.fchat.common.login.api.dto.GetRefreshTokenRequestDto
@@ -10,8 +11,14 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import org.koin.core.annotation.Named
+import org.koin.core.annotation.Single
 
-class LoginApi(private val client: HttpClient) {
+@Single
+class LoginApi(
+    @Named(ClientType.UNAUTHORIZED)
+    private val client: HttpClient
+) {
 
     suspend fun getRefreshToken(request: GetRefreshTokenRequestDto): GetRefreshTokenResponseDto =
         client.post("/auth/getRefreshToken") {
