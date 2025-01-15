@@ -2,7 +2,7 @@ package io.github.zidbrain.fchat.common.contacts.api
 
 import io.github.zidbrain.fchat.common.contacts.api.dto.GetContactsResponseDto
 import io.github.zidbrain.fchat.common.contacts.api.dto.RemoveContactsRequestDto
-import io.github.zidbrain.fchat.common.di.ClientType
+import io.github.zidbrain.fchat.common.di.CommonQualifiers
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -11,12 +11,12 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import org.koin.core.annotation.Named
+import org.koin.core.annotation.Qualifier
 import org.koin.core.annotation.Single
 
 @Single
 class ContactsApi(
-    @Named(ClientType.AUTHORIZED)
+    @Qualifier(CommonQualifiers.Authorized::class)
     private val client: HttpClient
 ) {
 

@@ -5,32 +5,16 @@ import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.DrawerState
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
@@ -40,6 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.zidbrain.fchat.android.R
+import io.github.zidbrain.fchat.android.ui.common.RoundedIcon
 import io.github.zidbrain.fchat.android.ui.contacts.ContactsPage
 import io.github.zidbrain.fchat.android.ui.conversation.ConversationList
 import io.github.zidbrain.fchat.common.chat.viewmodel.ChatState
@@ -48,6 +33,7 @@ import io.github.zidbrain.fchat.common.main.MainAction
 import io.github.zidbrain.fchat.common.main.MainEvent
 import io.github.zidbrain.fchat.common.main.MainViewModel
 import io.github.zidbrain.fchat.common.nav.ConversationNavigationInfo
+import io.github.zidbrain.fchat.common.user.model.User
 import io.github.zidbrain.fchat.util.CollectorEffect
 import io.github.zidbrain.fchat.util.showError
 import kotlinx.coroutines.launch
@@ -80,19 +66,62 @@ fun MainScreen(
 
 @Composable
 private fun MainScreenMenu(
+    drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed),
     startPage: MainScreenPage = MainScreenPage.Chat,
     chatState: ChatState,
     onLogout: () -> Unit,
-    onNavigateToConversation: (ConversationNavigationInfo) -> Unit
+    onNavigateToConversation: (ConversationNavigationInfo) -> Unit,
+    content: @Composable () -> Unit = {
+        MainScreenContent(
+            chatState = chatState,
+            startPage = startPage,
+            drawerState = drawerState,
+            onNavigateToConversation = onNavigateToConversation
+        )
+    }
 ) {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(
+                windowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Start)
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primary,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(10.dp)
+                            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
+                    ) {
+                        RoundedIcon(
+                            modifier = Modifier
+                                .size(80.dp),
+                            iconUrl = "icon",
+                            imageSize = 64.dp
+                        )
+
+                        val text = (chatState as? ChatState.Connected)?.user?.name ?: "Loading..."
+                        Text(
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            text = text,
+                            fontSize = 24.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                HorizontalDivider()
+
                 NavigationDrawerItem(
                     label = { Text("Profile") },
-                    icon = { Icon(painterResource(R.drawable.outline_account_circle_24), null) },
+                    icon = {
+                        Icon(
+                            painterResource(R.drawable.outline_account_circle_24),
+                            null
+                        )
+                    },
                     selected = false,
                     onClick = { /*TODO*/ })
                 NavigationDrawerItem(
@@ -109,15 +138,9 @@ private fun MainScreenMenu(
                 )
             }
         },
-        gesturesEnabled = drawerState.isOpen
-    ) {
-        MainScreenContent(
-            chatState = chatState,
-            startPage = startPage,
-            drawerState = drawerState,
-            onNavigateToConversation = onNavigateToConversation
-        )
-    }
+        gesturesEnabled = drawerState.isOpen,
+        content = content
+    )
 }
 
 @Composable
@@ -127,6 +150,15 @@ private fun MainScreenContent(
     chatState: ChatState,
     navController: NavHostController = rememberNavController(),
     onNavigateToConversation: (ConversationNavigationInfo) -> Unit,
+    pageContent: @Composable (MainScreenPage) -> Unit = {
+        MainScreenPages(
+            chatState = chatState,
+            page = it,
+            drawerState = drawerState,
+            navController = navController,
+            navigateToConversation = onNavigateToConversation
+        )
+    }
 ) {
     val pages = remember { MainScreenPage.entries }
     val currentBackStack by navController.currentBackStackEntryAsState()
@@ -156,13 +188,7 @@ private fun MainScreenContent(
         ) {
             pages.forEach { page ->
                 composable(page.name) {
-                    MainScreenPages(
-                        chatState = chatState,
-                        page = page,
-                        drawerState = drawerState,
-                        navController = navController,
-                        navigateToConversation = onNavigateToConversation
-                    )
+                    pageContent(page)
                 }
             }
         }
@@ -251,11 +277,29 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.exitTransitionForP
     else slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right)
 }
 
+@Composable
+private fun MainScreenPreview(drawerValue: DrawerValue) {
+    val drawerState = rememberDrawerState(initialValue = drawerValue)
+    MainScreenMenu(
+        drawerState = drawerState,
+        chatState = ChatState.Connected(User("", "Username", "")),
+        onLogout = {},
+        onNavigateToConversation = {}
+    ) {
+        MainScreenContent(
+            startPage = MainScreenPage.Chat,
+            drawerState = drawerState,
+            chatState = ChatState.Connected(User("", "Username", "")),
+            onNavigateToConversation = {},
+            pageContent = {}
+        )
+    }
+}
 
 @Composable
 @Preview
-private fun MainScreenPreview() {
-    MainScreenMenu(chatState = ChatState.Connected, onLogout = { }) {
+private fun MainScreenDrawerClosedPreview() = MainScreenPreview(DrawerValue.Closed)
 
-    }
-}
+@Composable
+@Preview
+private fun MainScreenDrawerOpenedPreview() = MainScreenPreview(DrawerValue.Open)

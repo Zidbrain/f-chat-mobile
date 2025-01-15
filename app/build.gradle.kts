@@ -71,6 +71,7 @@ android {
 
 ksp {
     arg("KOIN_CONFIG_CHECK","true")
+    arg("KOIN_USE_COMPOSE_VIEWMODEL", "false")
 }
 
 dependencies {

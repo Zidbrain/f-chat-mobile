@@ -3,7 +3,7 @@ package io.github.zidbrain.fchat.di
 import android.util.Log
 import io.github.zidbrain.fchat.android.BuildConfig
 import io.github.zidbrain.fchat.common.UnauthorizedException
-import io.github.zidbrain.fchat.common.di.ClientType
+import io.github.zidbrain.fchat.common.di.CommonQualifiers
 import io.github.zidbrain.fchat.common.login.repository.LoginRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
@@ -28,7 +28,7 @@ import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import org.koin.core.annotation.Module
-import org.koin.core.annotation.Named
+import org.koin.core.annotation.Qualifier
 import org.koin.core.annotation.Single
 
 @Module
@@ -70,11 +70,11 @@ class ClientModule {
         }
 
     @Single
-    @Named(ClientType.UNAUTHORIZED)
+    @Qualifier(CommonQualifiers.Unauthorized::class)
     fun unauth(): HttpClient = createClient()
 
     @Single
-    @Named(ClientType.AUTHORIZED)
+    @Qualifier(CommonQualifiers.Authorized::class)
     fun auth(loginRepository: LoginRepository): HttpClient = createClient {
         Auth {
             bearer {
@@ -102,6 +102,6 @@ class ClientModule {
     }
 
     @Single
-    @Named(ClientType.HOST_URL)
+    @Qualifier(CommonQualifiers.HostUrl::class)
     fun hostUrl(): String = BuildConfig.SERVER_URL
 }

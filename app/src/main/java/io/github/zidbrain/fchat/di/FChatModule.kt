@@ -13,7 +13,7 @@ import org.koin.core.annotation.Module
 import org.koin.core.annotation.Single
 
 @Module(
-    includes = [CommonModule::class, ClientModule::class]
+    includes = [CommonModule::class, ClientModule::class, ViewModelModule::class]
 )
 @ComponentScan("io.github.zidbrain.fchat")
 class FChatModule {

@@ -8,7 +8,7 @@ import androidx.compose.runtime.remember
 
 @Composable
 fun <T> rememberCallbackState(value: T, onUpdated: (T) -> Unit): MutableState<T> {
-    val state = remember(value) { mutableStateOf(value) }
+    val state = remember { mutableStateOf(value) }
     LaunchedEffect(state.value) {
         if (state.value != value) onUpdated(state.value)
     }

@@ -1,6 +1,3 @@
-@file:Suppress("OPT_IN_USAGE")
-
-
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlinxSerialization)
@@ -11,6 +8,7 @@ plugins {
 
 ksp {
     arg("KOIN_DEFAULT_MODULE", "false")
+    arg("KOIN_USE_COMPOSE_VIEWMODEL", "false")
 }
 
 android {
@@ -43,6 +41,7 @@ kotlin {
                 implementation(libs.androidx.security.crypto)
                 implementation(libs.app.cash.sqldelight.android.driver)
                 implementation(libs.koin.android)
+                implementation(libs.androidx.compose.runtime)
             }
         }
         val androidInstrumentedTest by getting {
@@ -70,6 +69,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(platform(libs.androidx.compose.bom))
     api(project(":mvi"))
     add("kspCommonMainMetadata", libs.koin.ksp.compiler)
     add("kspAndroid", libs.koin.ksp.compiler)

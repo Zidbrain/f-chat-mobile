@@ -2,24 +2,10 @@ package io.github.zidbrain.fchat.android.ui.conversation
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -37,6 +23,7 @@ import io.github.zidbrain.fchat.common.chat.repository.Conversation
 import io.github.zidbrain.fchat.common.chat.viewmodel.ChatState
 import io.github.zidbrain.fchat.common.conversation.viewmodel.ConversationListState
 import io.github.zidbrain.fchat.common.conversation.viewmodel.ConversationListViewModel
+import io.github.zidbrain.fchat.common.user.model.User
 import io.github.zidbrain.fchat.common.util.randomUUID
 import io.github.zidbrain.fchat.util.formatForDisplay
 import kotlinx.datetime.Clock
@@ -74,7 +61,7 @@ private fun ConversationList(
     Column {
         val loadingState = remember(chatState, state) {
             when (chatState) {
-                ChatState.Connected -> state.loading
+                is ChatState.Connected -> state.loading
                 is ChatState.Error -> ConversationListState.LoadingState.Error
                 ChatState.Loading -> ConversationListState.LoadingState.Loading
             }
@@ -195,7 +182,7 @@ fun ChatPreview() {
             },
             loading = ConversationListState.LoadingState.Complete
         ),
-        chatState = ChatState.Connected,
+        chatState = ChatState.Connected(User("", "", "")),
         onMenuClicked = { },
         navigateToConversation = { }
     )

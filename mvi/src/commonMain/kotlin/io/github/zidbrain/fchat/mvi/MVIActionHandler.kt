@@ -19,7 +19,7 @@ class MVIActionHandler<State : Any, Event> internal constructor(
     val state: State
         get() = viewModel.state.value
 
-    inline fun <T : State> switchState(state: T, block: MVIActionHandler<T, Event>.() -> Unit) {
+    inline fun <T : State> setState(state: T, block: MVIActionHandler<T, Event>.() -> Unit) {
         setState(state)
         (this as MVIActionHandler<T, Event>).block()
     }

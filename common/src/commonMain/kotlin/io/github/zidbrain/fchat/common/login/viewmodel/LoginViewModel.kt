@@ -1,5 +1,6 @@
 package io.github.zidbrain.fchat.common.login.viewmodel
 
+import androidx.compose.runtime.Immutable
 import io.github.zidbrain.fchat.common.UnauthorizedException
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.host.repository.UserSessionState
@@ -16,36 +17,53 @@ class LoginViewModel(
 
     override val initAction = buildAction {
         if (sessionRepository.state.value is UserSessionState.Empty) {
-            setState(LoginState.Content(false))
+            setState(LoginState.Buttons())
             return@buildAction
         }
 
-        setState(LoginState.Content(true))
-        try {
-            loginRepository.requestAccessToken()
-        } catch (ex: UnauthorizedException) {
-            loginRepository.logout()
-        }
-        setState(LoginState.Content(false))
-    }.onErrorSet(LoginState::Error)
+        setStateBy(handleAction(LoginAction.TryAuth))
+    }.onErrorSet(LoginState::Buttons)
 
     override fun handleAction(action: LoginAction) = buildAction {
         when (action) {
-            is LoginAction.Login -> {
-                setState(LoginState.Content(true))
-                loginRepository.login(action.idToken, action.email)
-                setState(LoginState.Content(false))
+            is LoginAction.GoogleLogin -> {
+                setState(LoginState.Loading)
+                loginRepository.loginWithGoogle(action.idToken, action.email)
+                setState(LoginState.Buttons())
+            }
+
+            LoginAction.ToEmailInput -> setState(LoginState.EmailInput)
+            LoginAction.ToButtons -> setState(LoginState.Buttons())
+            LoginAction.TryAuth -> {
+                setState(LoginState.Loading)
+                try {
+                    loginRepository.requestAccessToken()
+                } catch (ex: UnauthorizedException) {
+                    loginRepository.logout()
+                }
+                setState(LoginState.Buttons())
             }
         }
-    }.onErrorSet(LoginState::Error)
+    }.onErrorSet(LoginState::Buttons)
 }
 
 sealed class LoginAction {
-    data class Login(val idToken: String, val email: String) : LoginAction()
+    data class GoogleLogin(val idToken: String, val email: String) : LoginAction()
+    data object ToEmailInput : LoginAction()
+    data object ToButtons : LoginAction()
+    data object TryAuth : LoginAction()
 }
 
 sealed class LoginState {
+    @Immutable
     data object Empty : LoginState()
-    data class Content(val loading: Boolean) : LoginState()
-    data class Error(val cause: Throwable) : LoginState()
+
+    @Immutable
+    data class Buttons(val error: Throwable? = null) : LoginState()
+
+    @Immutable
+    data object EmailInput : LoginState()
+
+    @Immutable
+    data object Loading : LoginState()
 }

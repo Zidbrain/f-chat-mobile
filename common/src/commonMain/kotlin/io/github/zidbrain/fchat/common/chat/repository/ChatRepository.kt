@@ -64,7 +64,7 @@ class ChatRepository(
     /**
      * This function runs while the connection is active
      */
-    suspend fun connect(onConnectionEstablished: () -> Unit): Nothing {
+    suspend fun connect(onConnectionEstablished: suspend () -> Unit): Nothing {
         chatApi.connect(onConnectionEstablished) { message ->
             when (message) {
                 is ChatSocketMessageInContent.Payload.Message -> {

@@ -29,9 +29,9 @@ class SessionRepository(
     fun createSession(refreshToken: String, userId: String, email: String) {
         val session = UserSessionInfo(refreshToken, userId, email)
         _state.update {
+            encryptedStorage.userSession = session
             UserSessionState.ActiveSession.Unauthorized(session)
         }
-        encryptedStorage.userSession = session
     }
 
     fun authorize(accessToken: String) {
@@ -42,9 +42,9 @@ class SessionRepository(
 
     fun logout() {
         _state.update {
+            encryptedStorage.userSession = null
             UserSessionState.Empty
         }
-        encryptedStorage.userSession = null
     }
 }
 

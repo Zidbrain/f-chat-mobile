@@ -5,7 +5,7 @@ import io.github.zidbrain.fchat.common.conversation.api.dto.CreateConversationRe
 import io.github.zidbrain.fchat.common.conversation.api.dto.GetActiveDevicesRequest
 import io.github.zidbrain.fchat.common.conversation.api.dto.GetActiveDevicesResponse
 import io.github.zidbrain.fchat.common.conversation.api.dto.GetConversationInfoResponse
-import io.github.zidbrain.fchat.common.di.ClientType
+import io.github.zidbrain.fchat.common.di.CommonQualifiers
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -14,13 +14,12 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import org.koin.core.annotation.Named
+import org.koin.core.annotation.Qualifier
 import org.koin.core.annotation.Single
 
 @Single
 class ConversationApi(
-    
-    @Named(ClientType.AUTHORIZED)
+    @Qualifier(CommonQualifiers.Authorized::class)
     private val client: HttpClient
 ) {
     suspend fun getActiveDevices(request: GetActiveDevicesRequest): GetActiveDevicesResponse =

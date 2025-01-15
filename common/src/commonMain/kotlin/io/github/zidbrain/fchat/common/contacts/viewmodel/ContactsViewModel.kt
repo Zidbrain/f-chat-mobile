@@ -7,9 +7,11 @@ import io.github.zidbrain.fchat.common.nav.ConversationNavigationInfo
 import io.github.zidbrain.fchat.common.user.repository.UserRepository
 import io.github.zidbrain.fchat.common.util.replaceAt
 import io.github.zidbrain.fchat.mvi.MVIViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import org.koin.android.annotation.KoinViewModel
+import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 class ContactsViewModel(
@@ -80,6 +82,7 @@ class ContactsViewModel(
             }
 
             is ContactsAction.SearchInput -> requireState<ContactsState.Content> {
+                delay(500.milliseconds)
                 val titleState =
                     state.topBarState.title as TitleState.Searching
                 setState {
@@ -155,6 +158,7 @@ class ContactsViewModel(
             }
         }
     }.onErrorSet(ContactsState::Error)
+        .cancelable(true)
 }
 
 sealed class ContactsState(open val topBarState: TopBarState) {

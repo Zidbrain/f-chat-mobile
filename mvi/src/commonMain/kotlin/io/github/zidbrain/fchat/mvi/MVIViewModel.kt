@@ -1,5 +1,7 @@
 package io.github.zidbrain.fchat.mvi
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import io.github.zidbrain.fchat.logError
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
@@ -12,6 +14,16 @@ import kotlin.reflect.KClass
 
 abstract class MVIViewModel<in Action : Any, State : Any, Event>(initialState: State) :
     ViewModel() {
+
+    private var viewModelSavedStateProvider: ViewModelSavedStateProvider<State>? = null
+
+    constructor(savedDataProvider: ViewModelSavedStateProvider<State>) : this(savedDataProvider.getSavedStateOrDefault()) {
+        viewModelSavedStateProvider = savedDataProvider
+    }
+
+    override fun onCleared() {
+        viewModelSavedStateProvider?.saveState(mState.value)
+    }
 
     internal val mState = MutableStateFlow(initialState)
     val state by lazy {

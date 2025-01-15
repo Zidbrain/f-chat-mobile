@@ -17,6 +17,6 @@ class UserRepository(private val api: UserApi, private val sessionRepository: Se
 
     val currentUser: User
         get() = sessionRepository.session.let {
-            User(id = it.userId, name = it.email, email = it.email)
+            User(id = it.userId, name = it.email.substringBefore('@'), email = it.email)
         }
 }

@@ -4,7 +4,7 @@ import io.github.zidbrain.fchat.common.conversation.api.dto.ChatSocketMessageIn
 import io.github.zidbrain.fchat.common.conversation.api.dto.ChatSocketMessageInContent
 import io.github.zidbrain.fchat.common.conversation.api.dto.ChatSocketMessageOut
 import io.github.zidbrain.fchat.common.conversation.api.dto.ChatSocketMessageOutContent
-import io.github.zidbrain.fchat.common.di.ClientType
+import io.github.zidbrain.fchat.common.di.CommonQualifiers
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.util.randomUUID
 import io.ktor.client.HttpClient
@@ -14,21 +14,17 @@ import io.ktor.client.plugins.websocket.sendSerialized
 import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.http.URLBuilder
 import io.ktor.http.encodedPath
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withTimeout
-import org.koin.core.annotation.Named
+import kotlinx.coroutines.*
+import org.koin.core.annotation.Qualifier
 import org.koin.core.annotation.Single
 import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration.Companion.seconds
 
 @Single
 class ChatApi(
-    @Named(ClientType.UNAUTHORIZED)
+    @Qualifier(CommonQualifiers.Unauthorized::class)
     private val client: HttpClient,
-    @Named(ClientType.HOST_URL)
+    @Qualifier(CommonQualifiers.HostUrl::class)
     private val hostUrlString: String,
     private val sessionRepository: SessionRepository
 ) {
@@ -84,7 +80,7 @@ class ChatApi(
     }
 
     suspend fun connect(
-        onConnectionEstablished: () -> Unit,
+        onConnectionEstablished: suspend () -> Unit,
         messageHandler: suspend (ChatSocketMessageInContent.Payload) -> ChatSocketMessageOutContent.Control
     ): Nothing {
         val url = URLBuilder("${hostUrlString}/chat")
@@ -93,20 +89,22 @@ class ChatApi(
                 authenticate(sessionRepository.accessToken)
             }
 
-        onConnectionEstablished()
-        try {
-            session!!.handleConnection(messageHandler)
-        } catch (ex: Exception) {
-            if (ex is CancellationException) {
-                requests.forEach { (_, cont) -> cont.cancel(ex.cause) }
+        coroutineScope {
+            launch { onConnectionEstablished() }
+            try {
+                session!!.handleConnection(messageHandler)
+            } catch (ex: Exception) {
+                if (ex is CancellationException) {
+                    requests.forEach { (_, cont) -> cont.cancel(ex.cause) }
+                    requests.clear()
+                    throw ex.cause ?: ex
+                }
+                requests.forEach { (_, cont) -> cont.resumeWithException(ex) }
                 requests.clear()
-                throw ex.cause ?: ex
+                throw ex
+            } finally {
+                session = null
             }
-            requests.forEach { (_, cont) -> cont.resumeWithException(ex) }
-            requests.clear()
-            throw ex
-        } finally {
-            session = null
         }
     }
 }

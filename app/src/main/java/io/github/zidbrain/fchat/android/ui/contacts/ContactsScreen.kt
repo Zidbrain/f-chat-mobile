@@ -338,6 +338,22 @@ private fun ContactsContent(
                 TextButton(onClick = { sendAction(ContactsAction.DiscoverContacts) }) {
                     Text("Add some")
                 }
+            } else (content.topBarState.title as? TitleState.Searching)?.let {
+                item {
+                    if (it.query.isNotEmpty())
+                        Text(
+                            modifier = Modifier.padding(top = 40.dp),
+                            text = "No users named ${it.query}.",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.headlineMedium,
+                        )
+                    else  Text(
+                        modifier = Modifier.padding(top = 40.dp),
+                        text = "Enter the username",
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.headlineMedium,
+                    )
+                }
             }
         }
     }
@@ -408,6 +424,21 @@ private fun ContactsPreviewNoContacts() {
         state = Content(
             contacts = emptyList(),
             topBarState = TopBarState.Disabled,
+            removeDialog = null,
+            isRefreshing = false,
+        ),
+        onBackPressed = {},
+        sendAction = {}
+    )
+}
+
+@Composable
+@Preview
+private fun ContactsPreviewSearchContacts() {
+    ContactsScreen(
+        state = Content(
+            contacts = emptyList(),
+            topBarState = TopBarState.search(query = "something", local = false, loading = true),
             removeDialog = null,
             isRefreshing = false,
         ),

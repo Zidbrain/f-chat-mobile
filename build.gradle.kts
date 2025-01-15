@@ -8,4 +8,5 @@ plugins {
     alias(libs.plugins.kotlinxSerialization) apply false
     alias(libs.plugins.app.cash.sqldelight) apply false
     alias(libs.plugins.kotlin.compose.compiler) apply false
+    id("com.github.ben-manes.versions") version "0.51.0"
 }

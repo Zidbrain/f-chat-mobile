@@ -1,22 +1,19 @@
 package io.github.zidbrain.fchat.common.login.api
 
-import io.github.zidbrain.fchat.common.di.ClientType
-import io.github.zidbrain.fchat.common.login.api.dto.GetAccessTokenRequestDto
-import io.github.zidbrain.fchat.common.login.api.dto.GetAccessTokenResponseDto
-import io.github.zidbrain.fchat.common.login.api.dto.GetRefreshTokenRequestDto
-import io.github.zidbrain.fchat.common.login.api.dto.GetRefreshTokenResponseDto
+import io.github.zidbrain.fchat.common.di.CommonQualifiers
+import io.github.zidbrain.fchat.common.login.api.dto.*
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import org.koin.core.annotation.Named
+import org.koin.core.annotation.Qualifier
 import org.koin.core.annotation.Single
 
 @Single
 class LoginApi(
-    @Named(ClientType.UNAUTHORIZED)
+    @Qualifier(CommonQualifiers.Unauthorized::class)
     private val client: HttpClient
 ) {
 
@@ -31,4 +28,9 @@ class LoginApi(
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
+
+    suspend fun signIn(request: SignInRequestDto): GetRefreshTokenResponseDto = client.post("/auth/signIn") {
+        contentType(ContentType.Application.Json)
+        setBody(request)
+    }.body()
 }
