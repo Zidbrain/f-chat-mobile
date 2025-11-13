@@ -8,10 +8,11 @@ import io.github.zidbrain.Database
 import io.github.zidbrain.MessageEntity
 import io.github.zidbrain.ParticipantEntity
 import io.github.zidbrain.fchat.common.account.cryptography.CryptographyService
-import io.github.zidbrain.fchat.common.chat.repository.ChatMessage
-import io.github.zidbrain.fchat.common.chat.repository.Conversation
-import io.github.zidbrain.fchat.common.chat.repository.ConversationInfo
-import io.github.zidbrain.fchat.common.chat.repository.MessageStatus
+import io.github.zidbrain.fchat.common.chat.model.ChatMessage
+import io.github.zidbrain.fchat.common.chat.model.Conversation
+import io.github.zidbrain.fchat.common.chat.model.ConversationInfo
+import io.github.zidbrain.fchat.common.chat.model.MessageStatus
+import io.github.zidbrain.fchat.common.di.AppScope
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.user.model.User
 import io.github.zidbrain.fchat.common.user.repository.UserRepository
@@ -23,10 +24,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.datetime.Instant
-import org.koin.core.annotation.Single
+import me.tatarka.inject.annotations.Inject
+import kotlin.time.Instant
 
-@Single
+@AppScope
+@Inject
 class ConversationDao(
     private val database: Database,
     private val userRepository: UserRepository,
@@ -88,13 +90,7 @@ class ConversationDao(
         val list = database.conversationsQueries.getAllConversations(userId).asFlow()
         return list.map { query ->
             query.executeAsList().toModel().map {
-                ConversationInfo(
-                    id = it.id,
-                    name = it.name,
-                    participants = it.participants,
-                    symmetricKey = it.symmetricKey,
-                    lastMessage = it.messages.singleOrNull()
-                )
+                it.toInfo(userRepository.currentUser.id)
             }
         }
     }

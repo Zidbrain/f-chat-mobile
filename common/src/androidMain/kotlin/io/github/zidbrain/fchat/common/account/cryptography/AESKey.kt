@@ -15,7 +15,7 @@ actual class AESKey actual constructor(actual val encoded: ByteArray) : Cryptogr
         val cipher = Cipher.getInstance(TRANSFORMATION)
         val key = SecretKeySpec(encoded, "AES")
 
-        val ivBytes = ByteArray(16)
+        val ivBytes = ByteArray(12)
         random.nextBytes(ivBytes)
         val ivSpec = IvParameterSpec(ivBytes)
 
@@ -27,14 +27,14 @@ actual class AESKey actual constructor(actual val encoded: ByteArray) : Cryptogr
         val cipher = Cipher.getInstance(TRANSFORMATION)
         val key = SecretKeySpec(encoded, "AES")
 
-        val ivBytes = content.takeLast(16).toByteArray()
+        val ivBytes = content.takeLast(12).toByteArray()
         val ivSpec = IvParameterSpec(ivBytes)
 
         cipher.init(Cipher.DECRYPT_MODE, key, ivSpec)
-        return cipher.doFinal(content.dropLast(16).toByteArray())
+        return cipher.doFinal(content.dropLast(12).toByteArray())
     }
 }
 
 fun SecretKey.toModel() = AESKey(encoded)
 
-private const val TRANSFORMATION = "AES/CBC/PKCS5Padding"
+private const val TRANSFORMATION = "AES/GCM/NoPadding"

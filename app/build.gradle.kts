@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.googleServices)
-    alias(libs.plugins.kotlinxSerialization)
+    alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.kotlin.compose.compiler)
     alias(libs.plugins.ksp)
 }
@@ -21,12 +21,12 @@ kotlin {
 
 android {
     namespace = "io.github.zidbrain.fchat.android"
-    compileSdk = 35
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "io.github.zidbrain.fchat"
-        minSdk = 24
-        targetSdk = 35
+        minSdk = libs.versions.android.minSdk.get().toInt()
+        targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
 
@@ -69,39 +69,39 @@ android {
     }
 }
 
-ksp {
-    arg("KOIN_CONFIG_CHECK","true")
-    arg("KOIN_USE_COMPOSE_VIEWMODEL", "false")
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
+        optIn.add("kotlin.time.ExperimentalTime")
+    }
 }
 
 dependencies {
-    implementation(project(":common"))
+    implementation(projects.common)
 
     // credentials
     implementation(libs.androidx.credentials.play.services.auth)
-    implementation(libs.androidx.credentials.credentials)
-    implementation(libs.googleid)
 
     // firebase
     implementation(platform(libs.firebase.bom))
-
-    // koin
-    implementation(platform(libs.koin.bom))
-    implementation(libs.koin.android.compose)
-    ksp(libs.koin.ksp.compiler)
-    testImplementation(libs.koin.test)
+    implementation(libs.firebase.messaging)
 
     // mockito
     testImplementation(libs.mockito.core)
 
     // ktor
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
-    implementation(libs.ktor.logger)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.content.serialization.json)
-    implementation(libs.kotlinx.serialization)
-    implementation(libs.ktor.client.auth)
+    implementation(ktor.client.core)
+    implementation(ktor.client.cio)
+    implementation(ktor.client.logging)
+    implementation(ktor.client.contentNegotiation)
+    implementation(ktor.serialization.kotlinx.json)
+    implementation(ktor.serialization.kotlinx.protobuf)
+    implementation(ktor.client.auth)
+
+    // kotlin-inject
+    implementation(projects.kotlinInjectViewmodel)
+    implementation(libs.kotlin.inject.runtime)
+    ksp(libs.kotlin.inject.compiler)
 
     implementation(libs.kotlinx.datetime)
     implementation(libs.androidx.navigation.compose)

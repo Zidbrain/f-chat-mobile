@@ -1,16 +1,11 @@
 package io.github.zidbrain.fchat.util
 
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.format
+import kotlinx.datetime.*
 import kotlinx.datetime.format.DayOfWeekNames
 import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.format.char
-import kotlinx.datetime.minus
-import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 private val hourMinuteFormat = LocalTime.Format {
     hour()
@@ -23,13 +18,13 @@ private val dayOfTheWeekFormat = LocalDate.Format {
 }
 
 private val dayMonthFormat = LocalDate.Format {
-    dayOfMonth()
+    day()
     char(' ')
     monthName(MonthNames.ENGLISH_FULL)
 }
 
 private val dayMonthYearFormat = LocalDate.Format {
-    dayOfMonth()
+    day()
     char(' ')
     monthName(MonthNames.ENGLISH_FULL)
     char(' ')

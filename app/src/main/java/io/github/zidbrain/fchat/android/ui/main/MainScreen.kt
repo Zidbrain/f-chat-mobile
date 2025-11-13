@@ -1,20 +1,57 @@
 package io.github.zidbrain.fchat.android.ui.main
 
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationChannelCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
@@ -36,15 +73,15 @@ import io.github.zidbrain.fchat.common.nav.ConversationNavigationInfo
 import io.github.zidbrain.fchat.common.user.model.User
 import io.github.zidbrain.fchat.util.CollectorEffect
 import io.github.zidbrain.fchat.util.showError
+import io.github.zidbrain.kotlin.inject.viewmodel.injectViewModel
 import kotlinx.coroutines.launch
-import org.koin.androidx.compose.koinViewModel
 
 val LocalSnackbarHostState = staticCompositionLocalOf { SnackbarHostState() }
 
 @Composable
 fun MainScreen(
-    viewModel: MainViewModel = koinViewModel(),
-    chatViewModel: ChatViewModel = koinViewModel(),
+    viewModel: MainViewModel = injectViewModel(),
+    chatViewModel: ChatViewModel = injectViewModel(),
     startPage: MainScreenPage = MainScreenPage.Chat,
     onNavigateToConversation: (ConversationNavigationInfo) -> Unit
 ) {
@@ -62,6 +99,49 @@ fun MainScreen(
         onLogout = { viewModel.sendAction(MainAction.Logout) },
         onNavigateToConversation = onNavigateToConversation
     )
+    val context = LocalContext.current
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        PermissionRequester(
+            permission = android.Manifest.permission.POST_NOTIFICATIONS,
+            onPermissionGranted = { if (it) createNotificationChannel(context) }
+        )
+    else LaunchedEffect(Unit) {
+        createNotificationChannel(context)
+    }
+}
+
+const val FCHAT_MESSAGES = "FCHAT_MESSAGES"
+
+private fun createNotificationChannel(context: Context) {
+    val name = FCHAT_MESSAGES
+    val descriptionText = "Messages"
+    val channel =
+        NotificationChannelCompat.Builder(name, NotificationManagerCompat.IMPORTANCE_DEFAULT)
+            .setName(name)
+            .setDescription(descriptionText)
+            .build()
+    NotificationManagerCompat.from(context).createNotificationChannel(channel)
+}
+
+@Composable
+fun PermissionRequester(permission: String, onPermissionGranted: (Boolean) -> Unit) {
+    val context = LocalContext.current
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            onPermissionGranted(it)
+        }
+    LaunchedEffect(permission) {
+        if (ContextCompat.checkSelfPermission(
+                context,
+                permission
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            onPermissionGranted(true)
+            return@LaunchedEffect
+        }
+
+        launcher.launch(permission)
+    }
 }
 
 @Composable
@@ -247,7 +327,6 @@ private fun MainScreenPages(
                 navController.popBackStack()
             },
             navigateToConversation = {
-                navController.navigate(MainScreenPage.Chat.name)
                 navigateToConversation(it)
             }
         )

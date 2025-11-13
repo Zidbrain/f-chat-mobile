@@ -2,14 +2,12 @@ package io.github.zidbrain.fchat.common.account.cryptography
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import org.koin.core.annotation.Single
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import javax.crypto.KeyGenerator
 import javax.security.auth.x500.X500Principal
 
-@Single
 class AndroidCryptographyService : CryptographyService {
 
     private val keyStore = KeyStore.getInstance("AndroidKeyStore").apply {

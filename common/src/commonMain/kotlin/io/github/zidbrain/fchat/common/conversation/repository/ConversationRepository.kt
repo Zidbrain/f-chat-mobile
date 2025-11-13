@@ -2,14 +2,16 @@ package io.github.zidbrain.fchat.common.conversation.repository
 
 import io.github.zidbrain.fchat.common.account.cryptography.CryptographyService
 import io.github.zidbrain.fchat.common.account.cryptography.encryptRSA
-import io.github.zidbrain.fchat.common.chat.repository.ChatMessage
-import io.github.zidbrain.fchat.common.chat.repository.Conversation
-import io.github.zidbrain.fchat.common.chat.repository.ConversationInfo
-import io.github.zidbrain.fchat.common.chat.repository.MessageStatus
+import io.github.zidbrain.fchat.common.chat.model.ChatMessage
+import io.github.zidbrain.fchat.common.chat.model.Conversation
+import io.github.zidbrain.fchat.common.chat.model.ConversationInfo
+import io.github.zidbrain.fchat.common.chat.model.ConversationType
+import io.github.zidbrain.fchat.common.chat.model.MessageStatus
 import io.github.zidbrain.fchat.common.conversation.api.ConversationApi
 import io.github.zidbrain.fchat.common.conversation.api.dto.CreateConversationRequest
 import io.github.zidbrain.fchat.common.conversation.api.dto.GetActiveDevicesRequest
 import io.github.zidbrain.fchat.common.conversation.local.ConversationDao
+import io.github.zidbrain.fchat.common.di.SessionScope
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.user.model.User
 import io.github.zidbrain.fchat.common.user.repository.UserRepository
@@ -22,10 +24,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.datetime.Clock
-import org.koin.core.annotation.Single
+import me.tatarka.inject.annotations.Inject
+import kotlin.time.Clock
 
-@Single
+@SessionScope
+@Inject
 class ConversationRepository(
     private val api: ConversationApi,
     private val cryptographyService: CryptographyService,
@@ -92,11 +95,13 @@ class ConversationRepository(
         conversationId: String,
         externalMessageId: String?,
         message: (ConversationInfo) -> ChatMessage
-    ) {
+    ): ChatMessage {
         val conversation = getConversationInfo(conversationId)
             ?: requestConversationInfo(conversationId)
             ?: throw IllegalStateException("Cannot find conversation info for conversation id = $conversationId")
-        conversationDao.addMessage(conversationId, externalMessageId, message(conversation))
+        val decryptedMessage = message(conversation)
+        conversationDao.addMessage(conversationId, externalMessageId, decryptedMessage)
+        return decryptedMessage
     }
 
     private suspend fun requestConversationInfo(conversationId: String): ConversationInfo? {
@@ -110,7 +115,7 @@ class ConversationRepository(
             name = null,
             members = conversation.participants
         )
-        return result.toInfo()
+        return result.toInfo(userRepository.currentUser.id)
     }
 
     /**
@@ -147,4 +152,9 @@ class ConversationRepository(
     fun clearHistoryForConversation(id: String) {
         conversationDao.clearMessagesForConversation(id)
     }
+
+    suspend fun findConversationWith(userId: String): ConversationInfo? = getConversations()
+        .first()
+        .values
+        .firstOrNull { it.type is ConversationType.Direct && it.type.other.id == userId }
 }

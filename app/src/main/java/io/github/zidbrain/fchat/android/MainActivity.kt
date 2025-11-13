@@ -9,7 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import io.github.zidbrain.fchat.android.ui.host.HostScreen
 import io.github.zidbrain.fchat.android.ui.theme.FChatTheme
-import org.koin.compose.KoinContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,10 +20,8 @@ class MainActivity : ComponentActivity() {
         }
         super.onCreate(savedInstanceState)
         setContent {
-            KoinContext {
-                FChatTheme {
-                    HostScreen()
-                }
+            FChatTheme {
+                HostScreen()
             }
         }
     }

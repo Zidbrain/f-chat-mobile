@@ -1,16 +1,17 @@
 package io.github.zidbrain.fchat.common.user.api
 
 import io.github.zidbrain.fchat.common.contacts.api.dto.UserDto
-import io.github.zidbrain.fchat.common.di.CommonQualifiers
+import io.github.zidbrain.fchat.common.di.AppScope
+import io.github.zidbrain.fchat.common.di.Authorized
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
-import org.koin.core.annotation.Qualifier
-import org.koin.core.annotation.Single
+import me.tatarka.inject.annotations.Inject
 
-@Single
+@AppScope
+@Inject
 class UserApi(
-    @Qualifier(CommonQualifiers.Authorized::class)
+    @Authorized
     private val client: HttpClient
 ) {
 

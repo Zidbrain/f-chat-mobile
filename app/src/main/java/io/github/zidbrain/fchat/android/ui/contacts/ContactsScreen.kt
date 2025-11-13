@@ -67,11 +67,11 @@ import io.github.zidbrain.fchat.common.nav.ConversationNavigationInfo
 import io.github.zidbrain.fchat.util.CollectorEffect
 import io.github.zidbrain.fchat.util.rememberCallbackState
 import io.github.zidbrain.fchat.util.takeIfType
-import org.koin.androidx.compose.koinViewModel
+import io.github.zidbrain.kotlin.inject.viewmodel.injectViewModel
 
 @Composable
 fun ContactsPage(
-    viewModel: ContactsViewModel = koinViewModel(),
+    viewModel: ContactsViewModel = injectViewModel(),
     onBackPressed: () -> Unit,
     navigateToConversation: (ConversationNavigationInfo) -> Unit
 ) {

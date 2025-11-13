@@ -4,7 +4,9 @@ import io.github.zidbrain.fchat.common.conversation.api.dto.ChatSocketMessageIn
 import io.github.zidbrain.fchat.common.conversation.api.dto.ChatSocketMessageInContent
 import io.github.zidbrain.fchat.common.conversation.api.dto.ChatSocketMessageOut
 import io.github.zidbrain.fchat.common.conversation.api.dto.ChatSocketMessageOutContent
-import io.github.zidbrain.fchat.common.di.CommonQualifiers
+import io.github.zidbrain.fchat.common.di.AppScope
+import io.github.zidbrain.fchat.common.di.HostUrl
+import io.github.zidbrain.fchat.common.di.Unauthorized
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.util.randomUUID
 import io.ktor.client.HttpClient
@@ -14,17 +16,23 @@ import io.ktor.client.plugins.websocket.sendSerialized
 import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.http.URLBuilder
 import io.ktor.http.encodedPath
-import kotlinx.coroutines.*
-import org.koin.core.annotation.Qualifier
-import org.koin.core.annotation.Single
+import io.ktor.websocket.close
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
+import me.tatarka.inject.annotations.Inject
 import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration.Companion.seconds
 
-@Single
+@AppScope
+@Inject
 class ChatApi(
-    @Qualifier(CommonQualifiers.Unauthorized::class)
+    @Unauthorized
     private val client: HttpClient,
-    @Qualifier(CommonQualifiers.HostUrl::class)
+    @HostUrl
     private val hostUrlString: String,
     private val sessionRepository: SessionRepository
 ) {
@@ -103,6 +111,7 @@ class ChatApi(
                 requests.clear()
                 throw ex
             } finally {
+                session?.close()
                 session = null
             }
         }

@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "io.github.zidbrain.fchat"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24
@@ -17,7 +17,6 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
     androidTarget()
-    jvmToolchain(22)
     sourceSets {
         val androidMain by getting
         val commonMain by getting {

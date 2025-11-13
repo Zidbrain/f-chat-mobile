@@ -3,11 +3,10 @@
 package io.github.zidbrain.fchat.common.conversation.api.dto
 
 import io.github.zidbrain.fchat.common.util.randomUUID
-import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonClassDiscriminator
+import kotlin.time.Instant
 
 @Serializable
 data class ChatSocketMessageOut(
@@ -15,11 +14,9 @@ data class ChatSocketMessageOut(
     val content: ChatSocketMessageOutContent
 )
 
-@JsonClassDiscriminator("type")
 @Serializable
 sealed class ChatSocketMessageOutContent {
 
-    @JsonClassDiscriminator("type")
     @SerialName("payload")
     @Serializable
     sealed class Payload : ChatSocketMessageOutContent() {
@@ -31,7 +28,6 @@ sealed class ChatSocketMessageOutContent {
         ) : Payload()
     }
 
-    @JsonClassDiscriminator("type")
     @SerialName("control")
     @Serializable
     sealed class Control : ChatSocketMessageOutContent() {
@@ -42,10 +38,8 @@ sealed class ChatSocketMessageOutContent {
 }
 
 @Serializable
-@JsonClassDiscriminator("type")
 sealed class ChatSocketMessageInContent {
 
-    @JsonClassDiscriminator("type")
     @SerialName("payload")
     @Serializable
     sealed class Payload : ChatSocketMessageInContent() {
@@ -60,7 +54,6 @@ sealed class ChatSocketMessageInContent {
         ) : Payload()
     }
 
-    @JsonClassDiscriminator("type")
     @SerialName("control")
     @Serializable
     sealed class Control : ChatSocketMessageInContent() {

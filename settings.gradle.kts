@@ -17,9 +17,19 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
     }
+
+    versionCatalogs {
+        create("ktor") {
+            from("io.ktor:ktor-version-catalog:3.3.0")
+        }
+    }
 }
+
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 rootProject.name = "f-chat-mobile"
 include(":app")
 include(":common")
 include(":mvi")
+include(":kotlin-inject-viewmodel")
+include(":kotlin-inject-viewmodel:processor")

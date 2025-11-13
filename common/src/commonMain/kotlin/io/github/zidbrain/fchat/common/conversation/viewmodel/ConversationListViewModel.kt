@@ -1,13 +1,14 @@
 package io.github.zidbrain.fchat.common.conversation.viewmodel
 
+import io.github.zidbrain.fchat.common.chat.model.ConversationType
 import io.github.zidbrain.fchat.common.conversation.repository.ConversationRepository
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.mvi.MVIViewModel
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Instant
-import org.koin.android.annotation.KoinViewModel
+import me.tatarka.inject.annotations.Inject
+import kotlin.time.Instant
 
-@KoinViewModel
+@Inject
 class ConversationListViewModel(
     private val conversationRepository: ConversationRepository,
     private val sessionRepository: SessionRepository
@@ -22,13 +23,13 @@ class ConversationListViewModel(
         setStateBy(conversationRepository.getConversations().map { conversation ->
             ConversationListState(
                 conversations = conversation.values.map {
-                    val displayedName = if (it.participants.size == 2)
-                        it.participants.first { user -> user.id != sessionRepository.session.userId }.name
-                    else it.name
+                    val displayedName = when (it.type) {
+                        is ConversationType.Direct -> it.type.other.name
+                        is ConversationType.Group -> it.type.name
+                    }
                     ConversationListState.ConversationOverviewModel(
                         id = it.id,
-                        displayedName = displayedName
-                            ?: throw IllegalStateException("Conversation doesn't have a name"),
+                        displayedName = displayedName,
                         lastMessage = it.lastMessage?.let { message ->
                             val sentBySelf = sessionRepository.session.userId == message.sender.id
                             ConversationListState.ChatMessageOverviewModel(

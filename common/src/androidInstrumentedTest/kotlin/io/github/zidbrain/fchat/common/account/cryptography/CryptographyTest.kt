@@ -15,4 +15,14 @@ class CryptographyTest {
 
         assertEquals(testMessage, decrypted)
     }
+
+    @Test
+    fun can_encrypt_and_decrypt_with_aes() {
+        val testMessage = "testMessage"
+        val keyPair = AndroidCryptographyService().generateSymmetricKey()
+        val encrypted = keyPair.encrypt(testMessage.encodeToByteArray())
+        val decrypted = keyPair.decrypt(encrypted).decodeToString()
+
+        assertEquals(testMessage, decrypted)
+    }
 }

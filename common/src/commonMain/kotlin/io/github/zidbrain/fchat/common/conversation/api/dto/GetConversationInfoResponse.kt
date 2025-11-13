@@ -1,6 +1,6 @@
 package io.github.zidbrain.fchat.common.conversation.api.dto
 
-import io.github.zidbrain.fchat.common.chat.repository.Conversation
+import io.github.zidbrain.fchat.common.chat.model.Conversation
 import io.github.zidbrain.fchat.common.contacts.api.dto.UserDto
 import io.github.zidbrain.fchat.common.user.model.toModel
 import io.ktor.util.decodeBase64Bytes

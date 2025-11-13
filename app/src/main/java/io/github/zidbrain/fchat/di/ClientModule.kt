@@ -3,7 +3,7 @@ package io.github.zidbrain.fchat.di
 import android.util.Log
 import io.github.zidbrain.fchat.android.BuildConfig
 import io.github.zidbrain.fchat.common.UnauthorizedException
-import io.github.zidbrain.fchat.common.di.CommonQualifiers
+import io.github.zidbrain.fchat.common.di.ClientProvider
 import io.github.zidbrain.fchat.common.login.repository.LoginRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
@@ -26,13 +26,11 @@ import io.ktor.http.encodedPath
 import io.ktor.http.takeFrom
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.json.Json
-import org.koin.core.annotation.Module
-import org.koin.core.annotation.Qualifier
-import org.koin.core.annotation.Single
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.protobuf.ProtoBuf
 
-@Module
-class ClientModule {
+class ApplicationClientProvider : ClientProvider {
+    @OptIn(ExperimentalSerializationApi::class)
     private fun createClient(setup: HttpClientConfig<CIOEngineConfig>.() -> Unit = {}) =
         HttpClient(CIO) {
             expectSuccess = true
@@ -40,7 +38,7 @@ class ClientModule {
                 json()
             }
             WebSockets {
-                contentConverter = KotlinxWebsocketSerializationConverter(Json)
+                contentConverter = KotlinxWebsocketSerializationConverter(ProtoBuf)
             }
             Logging {
                 level = LogLevel.ALL
@@ -69,13 +67,9 @@ class ClientModule {
             setup()
         }
 
-    @Single
-    @Qualifier(CommonQualifiers.Unauthorized::class)
-    fun unauth(): HttpClient = createClient()
+    override fun unauth(): HttpClient = createClient()
 
-    @Single
-    @Qualifier(CommonQualifiers.Authorized::class)
-    fun auth(loginRepository: LoginRepository): HttpClient = createClient {
+    override fun auth(loginRepository: LoginRepository): HttpClient = createClient {
         Auth {
             bearer {
                 realm = "F Chat"
@@ -101,7 +95,5 @@ class ClientModule {
         }
     }
 
-    @Single
-    @Qualifier(CommonQualifiers.HostUrl::class)
-    fun hostUrl(): String = BuildConfig.SERVER_URL
+    override val hostUrl: String = BuildConfig.SERVER_URL
 }

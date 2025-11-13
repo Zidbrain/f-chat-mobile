@@ -1,4 +1,4 @@
-import io.github.zidbrain.fchat.common.chat.repository.MessageStatus;
+import io.github.zidbrain.fchat.common.chat.model.MessageStatus;
 
 CREATE TABLE conversationEntity (
     id TEXT PRIMARY KEY NOT NULL,

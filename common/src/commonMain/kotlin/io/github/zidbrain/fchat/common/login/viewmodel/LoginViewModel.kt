@@ -4,14 +4,16 @@ import androidx.compose.runtime.Immutable
 import io.github.zidbrain.fchat.common.UnauthorizedException
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.host.repository.UserSessionState
+import io.github.zidbrain.fchat.common.login.GoogleAuthForm
 import io.github.zidbrain.fchat.common.login.repository.LoginRepository
 import io.github.zidbrain.fchat.mvi.MVIViewModel
-import org.koin.android.annotation.KoinViewModel
+import io.github.zidbrain.kotlin.inject.viewmodel.annotations.InjectViewModel
 
-@KoinViewModel
+@InjectViewModel
 class LoginViewModel(
     private val loginRepository: LoginRepository,
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val googleAuthForm: GoogleAuthForm
 ) :
     MVIViewModel<LoginAction, LoginState, Nothing>(LoginState.Empty) {
 
@@ -28,7 +30,12 @@ class LoginViewModel(
         when (action) {
             is LoginAction.GoogleLogin -> {
                 setState(LoginState.Loading)
-                loginRepository.loginWithGoogle(action.idToken, action.email)
+                try {
+                    val token = googleAuthForm.launch() ?: return@buildAction
+                    loginRepository.loginWithGoogle(token.idToken, token.id)
+                } catch (ex: UnauthorizedException) {
+                    loginRepository.logout()
+                }
                 setState(LoginState.Buttons())
             }
 
@@ -36,6 +43,10 @@ class LoginViewModel(
             LoginAction.ToButtons -> setState(LoginState.Buttons())
             LoginAction.TryAuth -> {
                 setState(LoginState.Loading)
+                if (sessionRepository.state.value is UserSessionState.Empty) {
+                    sendAction(LoginAction.GoogleLogin)
+                    return@buildAction
+                }
                 try {
                     loginRepository.requestAccessToken()
                 } catch (ex: UnauthorizedException) {
@@ -48,7 +59,7 @@ class LoginViewModel(
 }
 
 sealed class LoginAction {
-    data class GoogleLogin(val idToken: String, val email: String) : LoginAction()
+    data object GoogleLogin : LoginAction()
     data object ToEmailInput : LoginAction()
     data object ToButtons : LoginAction()
     data object TryAuth : LoginAction()

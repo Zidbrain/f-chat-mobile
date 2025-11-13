@@ -3,10 +3,10 @@ package io.github.zidbrain.fchat.common.host.viewmodel
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.host.repository.UserSessionState
 import io.github.zidbrain.fchat.mvi.MVIViewModel
+import io.github.zidbrain.kotlin.inject.viewmodel.annotations.InjectViewModel
 import kotlinx.coroutines.flow.map
-import org.koin.android.annotation.KoinViewModel
 
-@KoinViewModel
+@InjectViewModel
 class HostViewModel(
     private val sessionRepository: SessionRepository
 ) :

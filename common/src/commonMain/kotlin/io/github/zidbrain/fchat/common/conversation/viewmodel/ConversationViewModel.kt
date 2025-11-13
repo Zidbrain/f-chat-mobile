@@ -1,25 +1,25 @@
 package io.github.zidbrain.fchat.common.conversation.viewmodel
 
+import io.github.zidbrain.fchat.common.chat.model.Conversation
+import io.github.zidbrain.fchat.common.chat.model.MessageStatus
 import io.github.zidbrain.fchat.common.chat.repository.ChatRepository
-import io.github.zidbrain.fchat.common.chat.repository.Conversation
-import io.github.zidbrain.fchat.common.chat.repository.MessageStatus
 import io.github.zidbrain.fchat.common.conversation.repository.ConversationRepository
 import io.github.zidbrain.fchat.common.nav.ConversationNavigationInfo
 import io.github.zidbrain.fchat.common.user.repository.UserRepository
 import io.github.zidbrain.fchat.mvi.MVIActionBuilder
 import io.github.zidbrain.fchat.mvi.MVIViewModel
+import io.github.zidbrain.kotlin.inject.viewmodel.annotations.InjectViewModel
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.koin.android.annotation.KoinViewModel
-import org.koin.core.annotation.InjectedParam
+import me.tatarka.inject.annotations.Assisted
+import kotlin.time.Instant
 
-@KoinViewModel
+@InjectViewModel
 class ConversationViewModel(
-    @InjectedParam
+    @Assisted
     private var navInfo: ConversationNavigationInfo,
     private val conversationRepository: ConversationRepository,
     private val chatRepository: ChatRepository,
@@ -32,7 +32,7 @@ class ConversationViewModel(
         val currentTimeZone = TimeZone.currentSystemDefault()
         val currentUserId = userRepository.currentUser.id
         return ConversationState.Content(
-            messagesByDate = messages
+            messagesByDate = messages.asSequence()
                 .map {
                     ConversationState.ConversationMessage(
                         id = it.id,

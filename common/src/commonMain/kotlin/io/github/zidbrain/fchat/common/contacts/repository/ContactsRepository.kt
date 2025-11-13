@@ -7,14 +7,16 @@ import io.github.zidbrain.fchat.common.contacts.api.dto.RemoveContactsRequestDto
 import io.github.zidbrain.fchat.common.contacts.local.ContactsDao
 import io.github.zidbrain.fchat.common.contacts.model.Contact
 import io.github.zidbrain.fchat.common.contacts.model.toModel
+import io.github.zidbrain.fchat.common.di.AppScope
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapLatest
-import org.koin.core.annotation.Single
+import me.tatarka.inject.annotations.Inject
 
-@Single
+@AppScope
+@Inject
 class ContactsRepository(
     private val api: ContactsApi,
     private val dao: ContactsDao,

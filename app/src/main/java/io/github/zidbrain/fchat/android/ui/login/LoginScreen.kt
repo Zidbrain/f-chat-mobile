@@ -6,42 +6,75 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicSecureTextField
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.foundation.text.input.maxLength
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.*
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.credentials.CredentialManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.zidbrain.fchat.android.R
 import io.github.zidbrain.fchat.android.ui.theme.Style
-import io.github.zidbrain.fchat.common.login.viewmodel.*
-import io.github.zidbrain.fchat.common.login.viewmodel.EmailAuthState.*
+import io.github.zidbrain.fchat.common.login.viewmodel.EmailAuthAction
+import io.github.zidbrain.fchat.common.login.viewmodel.EmailAuthState
+import io.github.zidbrain.fchat.common.login.viewmodel.EmailAuthState.BottomState
+import io.github.zidbrain.fchat.common.login.viewmodel.EmailAuthState.EmailValidation
+import io.github.zidbrain.fchat.common.login.viewmodel.EmailAuthState.PasswordValidation
+import io.github.zidbrain.fchat.common.login.viewmodel.EmailAuthViewModel
+import io.github.zidbrain.fchat.common.login.viewmodel.LoginAction
+import io.github.zidbrain.fchat.common.login.viewmodel.LoginState
+import io.github.zidbrain.fchat.common.login.viewmodel.LoginViewModel
 import io.github.zidbrain.fchat.util.rememberCallbackState
-import kotlinx.coroutines.launch
-import org.koin.android.ext.koin.androidContext
-import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.KoinApplication
-import org.koin.compose.koinInject
-import org.koin.dsl.module
+import io.github.zidbrain.kotlin.inject.viewmodel.injectViewModel
 
 @Composable
-fun LoginScreen(viewModel: LoginViewModel = koinViewModel()) {
+fun LoginScreen(viewModel: LoginViewModel = injectViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LoginScreenContent(
         state = state,
@@ -86,7 +119,8 @@ private fun LoginScreenContent(
                             visible = it.error != null
                         ) {
                             val linkColor = MaterialTheme.colorScheme.primary
-                            val linkStyle = SpanStyle(color = linkColor, fontWeight = FontWeight.Bold)
+                            val linkStyle =
+                                SpanStyle(color = linkColor, fontWeight = FontWeight.Bold)
                             val tryAgain = remember {
                                 buildAnnotatedString {
                                     append("Unfortunately an error occurred while trying to login.\n")
@@ -95,7 +129,7 @@ private fun LoginScreenContent(
                                             tag = "tryAgain",
                                             styles = TextLinkStyles(linkStyle),
                                             linkInteractionListener = {
-                                                onAction(LoginAction.TryAuth)
+                                                onAction(LoginAction.GoogleLogin)
                                             }
                                         )
                                     ) {
@@ -122,8 +156,8 @@ private fun LoginScreenContent(
 private fun LoginScreenButtons(onAction: (LoginAction) -> Unit) =
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         GoogleLoginButton(
-            onTokenAcquired = { token, email ->
-                onAction(LoginAction.GoogleLogin(token, email))
+            onLogin = {
+                onAction(LoginAction.GoogleLogin)
             }
         )
         EmailLoginButton(
@@ -134,22 +168,13 @@ private fun LoginScreenButtons(onAction: (LoginAction) -> Unit) =
     }
 
 @Composable
-private fun GoogleLoginButton(onTokenAcquired: (String, String) -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val manager = koinInject<CredentialManager>()
+private fun GoogleLoginButton(onLogin: () -> Unit) {
     TextButton(
         border = BorderStroke(1.dp, Color.Black),
         shape = RoundedCornerShape(20.dp),
         contentPadding = PaddingValues(horizontal = 12.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
-        onClick = {
-            scope.launch {
-                val token =
-                    launchAuthForm(manager, context) ?: return@launch
-                onTokenAcquired(token.idToken, token.id)
-            }
-        }
+        onClick = onLogin
     ) {
         Image(painterResource(R.drawable.ic_google), null)
         Text(
@@ -178,7 +203,7 @@ private fun EmailLoginButton(onToEmail: () -> Unit) {
 
 @Composable
 private fun LoginScreenEmailInput(
-    viewModel: EmailAuthViewModel = koinViewModel(),
+    viewModel: EmailAuthViewModel = injectViewModel(),
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -206,7 +231,8 @@ private fun LoginScreenEmailInput(
             modifier = Modifier
                 .align(Alignment.Start)
                 .offset(x = (-10).dp),
-            onClick = onBack
+            onClick = onBack,
+            enabled = state.bottom !is BottomState.Loading
         ) {
             Icon(painterResource(R.drawable.outline_arrow_back_24), null)
         }
@@ -275,7 +301,7 @@ private fun LoginScreenEmailInput(
                         when (state.password.validation) {
                             PasswordValidation.Valid -> {}
                             PasswordValidation.InvalidSymbols -> Text("Password must contain at least one digit, lowercase and uppercase letter")
-                            PasswordValidation.InvalidLength -> Text("Password must be at least 8 digits long")
+                            PasswordValidation.InvalidLength -> Text("Password must be at least 8 characters long")
                         }
                     }
                 )
@@ -326,31 +352,13 @@ private fun LoginScreenLoadingPreview() {
     LoginScreenContent(state = LoginState.Loading, onAction = {})
 }
 
-@Composable
-private fun KoinCredentialManager(content: @Composable () -> Unit) {
-    val context = LocalContext.current
-    KoinApplication(
-        application = {
-            androidContext(context)
-            modules(
-                module {
-                    single { CredentialManager.create(get()) }
-                }
-            )
-        },
-        content = content
-    )
-}
-
 @Preview
 @Composable
 private fun LoginScreenPreview() {
-    KoinCredentialManager {
-        LoginScreenContent(
-            state = LoginState.Buttons(),
-            onAction = {}
-        )
-    }
+    LoginScreenContent(
+        state = LoginState.Buttons(),
+        onAction = {}
+    )
 }
 
 @Preview

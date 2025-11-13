@@ -5,11 +5,11 @@ import io.github.zidbrain.fchat.common.user.model.User
 import io.github.zidbrain.fchat.common.user.repository.UserRepository
 import io.github.zidbrain.fchat.mvi.MVIActionBuilder
 import io.github.zidbrain.fchat.mvi.MVIViewModel
+import io.github.zidbrain.kotlin.inject.viewmodel.annotations.InjectViewModel
 import kotlinx.coroutines.delay
-import org.koin.android.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.seconds
 
-@KoinViewModel
+@InjectViewModel
 class ChatViewModel(
     private val chatRepository: ChatRepository,
     private val userRepository: UserRepository

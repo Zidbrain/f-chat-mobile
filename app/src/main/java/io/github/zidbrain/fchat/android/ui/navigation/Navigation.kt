@@ -1,6 +1,7 @@
 package io.github.zidbrain.fchat.android.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -10,16 +11,34 @@ import io.github.zidbrain.fchat.android.ui.conversation.ConversationScreen
 import io.github.zidbrain.fchat.android.ui.main.MainScreen
 import io.github.zidbrain.fchat.common.chat.viewmodel.ChatAction
 import io.github.zidbrain.fchat.common.chat.viewmodel.ChatViewModel
+import io.github.zidbrain.fchat.common.di.SessionComponent
 import io.github.zidbrain.fchat.common.nav.ConversationNavigationInfo
+import io.github.zidbrain.kotlin.inject.viewmodel.injectViewModel
 import kotlinx.serialization.Serializable
-import org.koin.androidx.compose.koinViewModel
-import org.koin.core.parameter.parametersOf
+
+object SessionComponentManager {
+    var sessionComponent: SessionComponent? = TODO()
+        private set
+
+    fun open(): SessionComponent {
+        return TODO()
+    }
+
+    fun close() {
+        sessionComponent = null
+    }
+}
 
 @Composable
 fun FChatNavHost() {
+    DisposableEffect(Unit) {
+        SessionComponentManager.open()
+        onDispose { SessionComponentManager.close() }
+    }
+
     val navController = rememberNavController()
 
-    val chatViewModel = koinViewModel<ChatViewModel>()
+    val chatViewModel = injectViewModel<ChatViewModel>()
 
     LifecycleResumeEffect(Unit) {
         chatViewModel.sendAction(ChatAction.RestoreConnection)
@@ -41,7 +60,7 @@ fun FChatNavHost() {
         composable<Destination.Conversation> {
             val destination = it.toRoute<Destination.Conversation>()
             ConversationScreen(
-                viewModel = koinViewModel { parametersOf(destination.toNavInfo()) },
+                viewModel = injectViewModel(parameters = arrayOf(destination.toNavInfo())),
                 onBack = { navController.popBackStack() }
             )
         }

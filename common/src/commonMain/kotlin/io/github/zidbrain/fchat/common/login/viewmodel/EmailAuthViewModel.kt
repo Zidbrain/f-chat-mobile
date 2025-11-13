@@ -1,17 +1,17 @@
 package io.github.zidbrain.fchat.common.login.viewmodel
 
 import androidx.compose.runtime.Immutable
+import io.github.zidbrain.fchat.common.di.Named
 import io.github.zidbrain.fchat.common.login.repository.LoginRepository
 import io.github.zidbrain.fchat.common.login.viewmodel.EmailAuthState.EmailValidation
 import io.github.zidbrain.fchat.common.login.viewmodel.EmailAuthState.PasswordValidation
 import io.github.zidbrain.fchat.mvi.MVIActionBuilder
 import io.github.zidbrain.fchat.mvi.MVIViewModel
 import io.github.zidbrain.fchat.mvi.ViewModelSavedStateProvider
+import io.github.zidbrain.kotlin.inject.viewmodel.annotations.InjectViewModel
 import kotlinx.serialization.Serializable
-import org.koin.android.annotation.KoinViewModel
-import org.koin.core.annotation.Named
 
-@KoinViewModel
+@InjectViewModel
 class EmailAuthViewModel(
     @Named(type = EmailAuthState::class)
     dataProvider: ViewModelSavedStateProvider<EmailAuthState>,
@@ -69,6 +69,7 @@ class EmailAuthViewModel(
                     try {
                         setState { copy(bottom = EmailAuthState.BottomState.Loading) }
                         loginRepository.loginWithEmail(state.email.email, state.password.password)
+                        setState(EmailAuthState.Empty)
                     } catch (ex: Exception) {
                         setState { copy(bottom = EmailAuthState.BottomState.InvalidEmailPassword) }
                     }
@@ -135,6 +136,7 @@ data class EmailAuthState(
             && password.validation == PasswordValidation.Valid
             && bottom !is BottomState.Loading
 
+    @Immutable
     @Serializable
     data class EmailState(
         val email: String,
@@ -145,6 +147,7 @@ data class EmailAuthState(
         Valid, InvalidFormat, Incomplete
     }
 
+    @Immutable
     @Serializable
     data class PasswordState(
         val password: String,
@@ -156,6 +159,7 @@ data class EmailAuthState(
     }
 
     @Serializable
+    @Immutable
     sealed class BottomState {
         data object Empty : BottomState()
         data object Error : BottomState()

@@ -5,26 +5,44 @@ import androidx.credentials.CredentialManager
 import app.cash.sqldelight.EnumColumnAdapter
 import io.github.zidbrain.Database
 import io.github.zidbrain.MessageEntity
+import io.github.zidbrain.fchat.android.BuildConfig
 import io.github.zidbrain.fchat.common.database.DriverFactory
-import io.github.zidbrain.fchat.common.di.CommonModule
-import kotlinx.datetime.Clock
-import org.koin.core.annotation.ComponentScan
-import org.koin.core.annotation.Module
-import org.koin.core.annotation.Single
+import io.github.zidbrain.fchat.common.di.AppComponent
+import io.github.zidbrain.fchat.common.login.GoogleAuthForm
+import me.tatarka.inject.annotations.Component
+import me.tatarka.inject.annotations.Inject
+import me.tatarka.inject.annotations.Scope
+import kotlin.time.Clock
 
-@Module(
-    includes = [CommonModule::class, ClientModule::class, ViewModelModule::class]
-)
-@ComponentScan("io.github.zidbrain.fchat")
-class FChatModule {
+@Scope
+annotation class FChatScope
 
-    @Single
+@FChatScope
+@Component
+abstract class FChatComponent(
+    @Component protected val viewModelModule: ViewModelModule,
+    @Component protected val appComponent: AppComponent
+) {
+
+    @FChatScope
+    @Inject
     fun clock(): Clock = Clock.System
 
-    @Single
+    @FChatScope
+    @Inject
     fun credentialManager(context: Context): CredentialManager = CredentialManager.create(context)
 
-    @Single
+    @FChatScope
+    @Inject
+    fun googleAuthForm(context: Context, credentialManager: CredentialManager): GoogleAuthForm =
+        GoogleAuthForm(
+            context = context,
+            credentialManager = credentialManager,
+            serverClientId = BuildConfig.SERVER_CLIENT_ID
+        )
+
+    @FChatScope
+    @Inject
     fun database(context: Context): Database {
         val driver = DriverFactory(context).createDriver()
         return Database(

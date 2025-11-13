@@ -1,12 +1,14 @@
 package io.github.zidbrain.fchat.common.host.repository
 
 import io.github.zidbrain.fchat.common.account.storage.EncryptedStorage
+import io.github.zidbrain.fchat.common.di.AppScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import org.koin.core.annotation.Single
+import me.tatarka.inject.annotations.Inject
 
-@Single
+@AppScope
+@Inject
 class SessionRepository(
     private val encryptedStorage: EncryptedStorage
 ) {
@@ -25,6 +27,8 @@ class SessionRepository(
 
     val accessToken: String
         get() = (_state.value as UserSessionState.ActiveSession.Authorized).accessToken
+
+    var fcmToken: String? by encryptedStorage::fcmToken
 
     fun createSession(refreshToken: String, userId: String, email: String) {
         val session = UserSessionInfo(refreshToken, userId, email)

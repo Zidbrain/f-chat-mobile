@@ -4,11 +4,13 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import io.github.zidbrain.ContactEntity
 import io.github.zidbrain.Database
+import io.github.zidbrain.fchat.common.di.AppScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import org.koin.core.annotation.Single
+import me.tatarka.inject.annotations.Inject
 
-@Single
+@AppScope
+@Inject
 class ContactsDao(
      private val database: Database
 ) {

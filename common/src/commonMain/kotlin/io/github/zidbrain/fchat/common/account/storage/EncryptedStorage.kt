@@ -4,4 +4,5 @@ import io.github.zidbrain.fchat.common.host.repository.UserSessionInfo
 
 interface EncryptedStorage {
     var userSession: UserSessionInfo?
+    var fcmToken: String?
 }

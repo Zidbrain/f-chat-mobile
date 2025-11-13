@@ -4,46 +4,14 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.add
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.contentColorFor
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -57,7 +25,7 @@ import io.github.zidbrain.fchat.android.ui.common.FullScreenLoadingIndicator
 import io.github.zidbrain.fchat.android.ui.common.RoundedIcon
 import io.github.zidbrain.fchat.android.ui.common.SystemBarsAppearance
 import io.github.zidbrain.fchat.android.ui.theme.FChatTheme
-import io.github.zidbrain.fchat.common.chat.repository.MessageStatus
+import io.github.zidbrain.fchat.common.chat.model.MessageStatus
 import io.github.zidbrain.fchat.common.conversation.viewmodel.ConversationAction
 import io.github.zidbrain.fchat.common.conversation.viewmodel.ConversationState
 import io.github.zidbrain.fchat.common.conversation.viewmodel.ConversationState.Content
@@ -66,12 +34,8 @@ import io.github.zidbrain.fchat.common.conversation.viewmodel.ConversationViewMo
 import io.github.zidbrain.fchat.common.util.randomUUID
 import io.github.zidbrain.fchat.util.formatForDisplay
 import io.github.zidbrain.fchat.util.formatLocalTime
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
-import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.*
+import kotlin.time.Clock
 
 @Composable
 fun ConversationScreen(
@@ -389,10 +353,15 @@ private fun MessageInputComponent(
     )
 }
 
-private fun message(content: String, isSenderSelf: Boolean, clock: Clock = Clock.System) =
+private fun message(
+    content: String,
+    isSenderSelf: Boolean,
+    status: MessageStatus = MessageStatus.Delivered,
+    clock: Clock = Clock.System
+) =
     ConversationMessage(
         id = randomUUID(),
-        status = MessageStatus.Delivered,
+        status = status,
         senderName = if (isSenderSelf) "User" else "Jane Doe",
         senderIconUrl = "icon",
         content = content,
@@ -411,14 +380,17 @@ private fun ConversationScreenPreview() = FChatTheme {
                     message(
                         isSenderSelf = false,
                         content = "Lorem Ipsum",
+                        status = MessageStatus.Read
                     ),
                     message(
                         isSenderSelf = true,
                         content = "Lorem Ipsum response",
+                        status = MessageStatus.NotDelivered
                     ),
                     message(
                         isSenderSelf = true,
                         content = "Lorem Ipsum response longdalskdowkdaowkdowakdpaokdpawkdpawkdp[aqkd",
+                        status = MessageStatus.Initial
                     )
                 )
             ),

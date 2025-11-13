@@ -1,24 +1,11 @@
+import com.android.build.api.dsl.androidLibrary
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.kotlinxSerialization)
+    alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.app.cash.sqldelight)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.kotlin.multiplatform)
     alias(libs.plugins.ksp)
-}
-
-ksp {
-    arg("KOIN_DEFAULT_MODULE", "false")
-    arg("KOIN_USE_COMPOSE_VIEWMODEL", "false")
-}
-
-android {
-    namespace = "io.github.zidbrain.fchat.common"
-    compileSdk = 35
-
-    defaultConfig {
-        minSdk = 24
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
 }
 
 sqldelight {
@@ -32,45 +19,46 @@ sqldelight {
 kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
+        optIn.add("kotlin.time.ExperimentalTime")
     }
-    androidTarget()
-    jvmToolchain(22)
-    sourceSets {
-        val androidMain by getting {
-            dependencies {
-                implementation(libs.androidx.security.crypto)
-                implementation(libs.app.cash.sqldelight.android.driver)
-                implementation(libs.koin.android)
-                implementation(libs.androidx.compose.runtime)
-            }
-        }
-        val androidInstrumentedTest by getting {
-            dependencies {
-                implementation(libs.kotlin.test)
-                implementation(libs.androidx.test.core)
-                implementation(libs.androidx.test.runner)
-            }
-        }
-        val commonMain by getting {
-            dependencies {
-                implementation(libs.kotlinx.datetime)
-                implementation(libs.kotlinx.serialization)
-                implementation(libs.ktor.client.core)
-                implementation(libs.ktor.client.websockets)
-                implementation(libs.ktor.client.content.negotiation)
-                implementation(libs.app.cash.sqldelight.coroutines)
 
-                implementation(project.dependencies.platform(libs.koin.bom))
-                implementation(libs.koin.core)
-                api(libs.koin.annotations)
-            }
+    androidLibrary {
+        namespace = "io.github.zidbrain.fchat.common"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+
+    sourceSets {
+        androidMain.dependencies {
+            implementation(project.dependencies.platform(libs.androidx.compose.bom))
+            implementation(libs.androidx.security.crypto)
+            implementation(libs.app.cash.sqldelight.android.driver)
+            implementation(libs.androidx.compose.runtime)
+            api(libs.androidx.credentials.credentials)
+            api(libs.googleid)
+        }
+        androidInstrumentedTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.androidx.test.core)
+            implementation(libs.androidx.test.runner)
+        }
+        commonMain.dependencies {
+            implementation(libs.kotlinx.datetime)
+            implementation(ktor.client.core)
+            implementation(ktor.client.websockets)
+            implementation(ktor.client.contentNegotiation)
+            implementation(libs.app.cash.sqldelight.coroutines)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.serialization.core)
+
+            api(projects.mvi)
+            implementation(projects.kotlinInjectViewmodel)
+            implementation(libs.kotlin.inject.runtime)
         }
     }
 }
 
 dependencies {
-    implementation(platform(libs.androidx.compose.bom))
-    api(project(":mvi"))
-    add("kspCommonMainMetadata", libs.koin.ksp.compiler)
-    add("kspAndroid", libs.koin.ksp.compiler)
+    ksp(libs.kotlin.inject.compiler)
+  //  ksp(projects.kotlinInjectViewmodel.processor)
 }

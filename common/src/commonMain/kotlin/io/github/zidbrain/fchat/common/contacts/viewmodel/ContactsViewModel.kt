@@ -3,20 +3,22 @@ package io.github.zidbrain.fchat.common.contacts.viewmodel
 import io.github.zidbrain.fchat.common.contacts.model.Contact
 import io.github.zidbrain.fchat.common.contacts.repository.ContactsRepository
 import io.github.zidbrain.fchat.common.contacts.viewmodel.ContactsState.TitleState
+import io.github.zidbrain.fchat.common.conversation.repository.ConversationRepository
 import io.github.zidbrain.fchat.common.nav.ConversationNavigationInfo
 import io.github.zidbrain.fchat.common.user.repository.UserRepository
 import io.github.zidbrain.fchat.common.util.replaceAt
 import io.github.zidbrain.fchat.mvi.MVIViewModel
+import io.github.zidbrain.kotlin.inject.viewmodel.annotations.InjectViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import org.koin.android.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
-@KoinViewModel
+@InjectViewModel
 class ContactsViewModel(
     private val repository: ContactsRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val conversationRepository: ConversationRepository,
 ) :
     MVIViewModel<ContactsAction, ContactsState, ContactsEvent>(getInitState(repository)) {
 
@@ -114,14 +116,12 @@ class ContactsViewModel(
                     return@requireState
                 }
 
-                val user = userRepository.getUser(id = action.id)
                 setState(prevState)
                 // TODO: Conversation with multiple users
-                raiseEvent(
-                    ContactsEvent.NavigateToConversation(
-                        ConversationNavigationInfo.NewDirectMessageConversation(user.id)
-                    )
-                )
+                val foundConv = conversationRepository.findConversationWith(action.id)
+                val navInfo = if (foundConv != null) ConversationNavigationInfo.ConversationId(foundConv.id)
+                    else ConversationNavigationInfo.NewDirectMessageConversation(action.id)
+                raiseEvent(ContactsEvent.NavigateToConversation(navInfo))
             }
 
             is ContactsAction.SelectContact -> requireState<ContactsState.Content> {

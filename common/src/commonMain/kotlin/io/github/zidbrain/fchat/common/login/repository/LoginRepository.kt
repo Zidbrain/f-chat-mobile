@@ -2,6 +2,7 @@ package io.github.zidbrain.fchat.common.login.repository
 
 import io.github.zidbrain.fchat.common.account.cryptography.CryptographyService
 import io.github.zidbrain.fchat.common.account.storage.SsoStorage
+import io.github.zidbrain.fchat.common.di.AppScope
 import io.github.zidbrain.fchat.common.host.repository.SessionRepository
 import io.github.zidbrain.fchat.common.host.repository.UserSessionState
 import io.github.zidbrain.fchat.common.login.api.LoginApi
@@ -10,9 +11,10 @@ import io.github.zidbrain.fchat.common.login.api.dto.GetRefreshTokenRequestDto
 import io.github.zidbrain.fchat.common.login.api.dto.GetRefreshTokenRequestDtoData
 import io.github.zidbrain.fchat.common.login.api.dto.SignInRequestDto
 import io.ktor.util.encodeBase64
-import org.koin.core.annotation.Single
+import me.tatarka.inject.annotations.Inject
 
-@Single
+@AppScope
+@Inject
 class LoginRepository(
     private val loginApi: LoginApi,
     private val cryptographyService: CryptographyService,
@@ -32,9 +34,7 @@ class LoginRepository(
             )
         )
         val response = loginApi.getRefreshToken(request)
-        sessionRepository.createSession(response.refreshToken, response.userId, email)
-
-        requestAccessToken()
+        login(response.refreshToken, response.userId, email)
     }
 
     suspend fun loginWithEmail(email: String, password: String) {
@@ -48,9 +48,7 @@ class LoginRepository(
         )
 
         val response = loginApi.getRefreshToken(request)
-        sessionRepository.createSession(response.refreshToken, response.userId, email)
-
-        requestAccessToken()
+        login(response.refreshToken, response.userId, email)
     }
 
     suspend fun requestAccessToken() {
@@ -70,7 +68,11 @@ class LoginRepository(
             devicePublicKey = publicKey
         )
         val response = loginApi.signIn(request)
-        sessionRepository.createSession(response.refreshToken, response.userId, email)
+        login(response.refreshToken, response.userId, email)
+    }
+
+    private suspend fun login(refreshToken: String, userId: String, email: String) {
+        sessionRepository.createSession(refreshToken, userId, email)
 
         requestAccessToken()
     }

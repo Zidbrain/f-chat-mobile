@@ -1,22 +1,13 @@
 package io.github.zidbrain.fchat.common.account.storage
 
 import android.content.Context
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
+import io.github.zidbrain.fchat.common.di.AppScope
 import io.github.zidbrain.fchat.common.host.repository.UserSessionInfo
-import org.koin.core.annotation.Single
+import me.tatarka.inject.annotations.Inject
 
-@Single
 class AndroidEncryptedStorage(context: Context) : EncryptedStorage {
 
-    private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
-    private val prefs = EncryptedSharedPreferences.create(
-        FILE_NAME,
-        masterKeyAlias,
-        context,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val prefs = context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
     private val editor = prefs.edit()
 
     override var userSession: UserSessionInfo?
@@ -34,10 +25,19 @@ class AndroidEncryptedStorage(context: Context) : EncryptedStorage {
                 .commit()
         }
 
+    override var fcmToken: String?
+        get() = prefs.getString(FCM_TOKEN, null)
+        set(value) {
+            editor
+                .putString(FCM_TOKEN, value)
+                .commit()
+        }
+
     private companion object {
         const val FILE_NAME = "prefs_encrypted"
         const val REFRESH_TOKEN = "refreshToken"
         const val USER_ID = "userId"
         const val EMAIL = "email"
+        const val FCM_TOKEN = "fcm_token"
     }
 }
